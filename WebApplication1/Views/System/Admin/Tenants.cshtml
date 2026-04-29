@@ -1,0 +1,207 @@
+﻿@{
+    Layout = "~/Views/Shared/_AdminLayout.cshtml";
+}
+
+<div class="p-6" ng-app="tenantApp" ng-controller="TenantController">
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-slate-900 text-2xl font-bold">Tenants</h1>
+            <p class="text-slate-500 text-sm">{{ tenants.length }} registered tenants</p>
+        </div>
+        <button ng-click="openEditor()" class="flex items-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-green-500">
+            <i data-lucide="plus" class="w-4 h-4"></i> Add Tenant
+        </button>
+    </div>
+
+    <div class="flex gap-2 mb-3">
+        <div class="relative flex-1">
+            <i data-lucide="search" class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4"></i>
+            <input type="text" ng-model="filters.search" placeholder="Search tenants..." class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+        </div>
+        <button ng-click="reverseSort = !reverseSort" title="Toggle Sort" class="flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 hover:border-green-300 hover:text-green-700 text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-green-500 whitespace-nowrap">
+            <i data-lucide="{{ reverseSort ? 'arrow-up-a-z' : 'arrow-down-a-z' }}" class="w-4 h-4"></i>
+            <span class="hidden sm:inline">{{ reverseSort ? 'Z &rarr; A' : 'A &rarr; Z' }}</span>
+        </button>
+    </div>
+
+    <div class="flex flex-wrap gap-y-2 gap-x-4 mb-3 p-3 bg-slate-50 border border-slate-100 rounded-2xl">
+
+        <div class="flex items-center gap-2 flex-wrap">
+            <span class="text-xs text-slate-400 font-medium flex items-center gap-1">
+                <i data-lucide="sliders-horizontal" class="w-3 h-3"></i> Contract:
+            </span>
+            <button ng-repeat="f in ['All', 'Short-term', 'Mid-term', 'Long-term']"
+                    ng-click="filters.contract = f"
+                    ng-class="filters.contract === f ? 'bg-green-600 text-white border-green-600' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'"
+                    class="px-3 py-1 rounded-lg text-xs font-medium border transition-all focus:outline-none focus:ring-2 focus:ring-green-500">
+                {{ f }}
+            </button>
+        </div>
+
+        <div class="hidden sm:block w-px bg-slate-200 self-stretch"></div>
+
+        <div class="flex items-center gap-2 flex-wrap">
+            <span class="text-xs text-slate-400 font-medium flex items-center gap-1">
+                <i data-lucide="sliders-horizontal" class="w-3 h-3"></i> Status:
+            </span>
+            <button ng-repeat="s in [{label:'All', val:'All'}, {label:'Active', val:'active'}, {label:'Expiring', val:'expiring'}, {label:'Inactive', val:'inactive'}]"
+                    ng-click="filters.status = s.val"
+                    ng-class="filters.status === s.val ? 'bg-green-600 text-white border-green-600' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'"
+                    class="px-3 py-1 rounded-lg text-xs font-medium border transition-all focus:outline-none focus:ring-2 focus:ring-green-500">
+                {{ s.label }}
+            </button>
+        </div>
+
+        <button ng-show="filters.contract !== 'All' || filters.status !== 'All'" ng-click="resetFilters()" class="ml-auto text-xs text-slate-400 hover:text-red-500 flex items-center gap-1 transition-colors">
+            <i data-lucide="x" class="w-3 h-3"></i> Reset
+        </button>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead>
+                    <tr class="bg-slate-50 border-b border-slate-100 text-left">
+                        <th class="px-5 py-3 text-xs text-slate-500 font-medium">Tenant ID</th>
+                        <th class="px-5 py-3 text-xs text-slate-500 font-medium">Tenant</th>
+                        <th class="px-5 py-3 text-xs text-slate-500 font-medium">Unit</th>
+                        <th class="px-5 py-3 text-xs text-slate-500 font-medium">Occupancy</th>
+                        <th class="px-5 py-3 text-xs text-slate-500 font-medium">Lease Period</th>
+                        <th class="px-5 py-3 text-xs text-slate-500 font-medium">Days Left</th>
+                        <th class="px-5 py-3 text-xs text-slate-500 font-medium">Contract</th>
+                        <th class="px-5 py-3 text-xs text-slate-500 font-medium">Status</th>
+                        <th class="px-5 py-3 text-xs text-slate-500 font-medium">Payment</th>
+                        <th class="px-5 py-3 text-xs text-slate-500 font-medium">IDs</th>
+                        <th class="px-5 py-3 text-xs text-slate-500 font-medium">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-50">
+                    <tr ng-repeat="t in tenants | filter:tenantFilter | orderBy:'name':reverseSort as filteredTenants"
+                        ng-class="{'opacity-60': t.isTerminated}"
+                        class="hover:bg-slate-50 transition-colors">
+
+                        <td class="px-5 py-3">
+                            <span ng-if="t.tenantNumber" class="inline-flex items-center gap-1 px-2.5 py-1 bg-green-50 text-green-700 border border-green-100 rounded-lg text-xs font-mono font-semibold tracking-wide">
+                                <i data-lucide="hash" class="w-3 h-3 text-green-500"></i>{{ t.tenantNumber }}
+                            </span>
+                            <span ng-if="!t.tenantNumber" class="text-slate-300 text-xs">—</span>
+                        </td>
+
+                        <td class="px-5 py-3">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold flex-shrink-0"
+                                     ng-class="t.isTerminated ? 'bg-red-100 text-red-400' : 'bg-green-100 text-green-700'">
+                                    {{ t.name.charAt(0) }}
+                                </div>
+                                <div>
+                                    <div class="flex items-center gap-1.5">
+                                        <p class="text-slate-900 text-sm font-medium">{{ t.name }}</p>
+                                        <span ng-if="t.isTerminated" class="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-red-100 text-red-600 text-xs rounded-full font-medium">
+                                            <i data-lucide="shield-off" class="w-2.5 h-2.5"></i> Terminated
+                                        </span>
+                                    </div>
+                                    <p class="text-slate-400 text-xs">{{ t.email }}</p>
+                                </div>
+                            </div>
+                        </td>
+
+                        <td class="px-5 py-3 text-sm text-slate-600">{{ t.unit }}</td>
+
+                        <td class="px-5 py-3">
+                            <span ng-if="t.occupancyType === 'with_others'" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border font-medium bg-blue-50 text-blue-700 border-blue-100">
+                                <i data-lucide="users" class="w-3 h-3"></i>+{{ t.additionalOccupantsCount }} co-occupant{{ t.additionalOccupantsCount !== 1 ? 's' : '' }}
+                            </span>
+                            <span ng-if="t.occupancyType !== 'with_others'" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border font-medium bg-slate-50 text-slate-500 border-slate-200">
+                                <i data-lucide="user" class="w-3 h-3"></i>Solo
+                            </span>
+                        </td>
+
+                        <td class="px-5 py-3 text-xs text-slate-500">{{ t.leaseStart }} &rarr; {{ t.leaseEnd }}</td>
+
+                        <td class="px-5 py-3">
+                            <span ng-if="t.daysLeft !== null" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border font-medium" ng-class="getDaysLeftClass(t.daysLeft)">
+                                <i data-lucide="clock" class="w-3 h-3"></i>{{ t.daysLeft < 0 ? (t.daysLeft * -1) + 'd ago' : t.daysLeft + 'd left' }}
+                            </span>
+                            <span ng-if="t.daysLeft === null" class="text-slate-400 text-xs">—</span>
+                        </td>
+
+                        <td class="px-5 py-3">
+                            <span ng-if="t.contractType" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border font-medium" ng-class="getContractClass(t.contractType)">
+                                <i data-lucide="clock" class="w-2.5 h-2.5"></i>{{ t.contractType }}
+                            </span>
+                            <span ng-if="!t.contractType" class="text-slate-300 text-xs">—</span>
+                        </td>
+
+                        <td class="px-5 py-3">
+                            <span class="px-2 py-1 rounded-full text-xs font-medium" ng-class="getStatusClass(t.liveStatus)">
+                                {{ t.liveStatus }}
+                            </span>
+                        </td>
+
+                        <td class="px-5 py-3">
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border font-medium" ng-class="getPaymentClass(t.latestPaymentStatus)">
+                                <i data-lucide="credit-card" class="w-2.5 h-2.5"></i>{{ t.latestPaymentStatus === 'None' ? 'No Record' : t.latestPaymentStatus }}
+                            </span>
+                        </td>
+
+                        <td class="px-5 py-3">
+                            <span class="text-xs px-2 py-0.5 rounded-full" ng-class="t.idFilesCount > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-50 text-slate-400'">
+                                {{ t.idFilesCount }} ID{{ t.idFilesCount !== 1 ? 's' : '' }}
+                            </span>
+                        </td>
+
+                        <td class="px-5 py-3">
+                            <div class="flex items-center gap-1.5">
+                                <button class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600"><i data-lucide="eye" class="w-4 h-4"></i></button>
+                                <button class="p-1.5 rounded-lg hover:bg-green-50 text-slate-400 hover:text-green-600"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
+                                <button ng-if="!t.isTerminated" ng-click="openTerminateModal(t)" class="p-1.5 rounded-lg hover:bg-orange-50 text-slate-400 hover:text-orange-600"><i data-lucide="user-x" class="w-4 h-4"></i></button>
+                                <button ng-click="openDeleteModal(t)" class="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                            </div>
+                        </td>
+                    </tr>
+
+                    <tr ng-if="filteredTenants.length === 0">
+                        <td colspan="11" class="text-center py-12 text-slate-400 text-sm">No tenants found matching your criteria.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    @*<div ng-show="terminateTarget" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50">
+        <div class="bg-white rounded-2xl w-full max-w-sm p-6 shadow-xl relative">
+            <div class="flex justify-center mb-4">
+                <div class="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center">
+                    <i data-lucide="alert-triangle" class="text-orange-500 w-8 h-8"></i>
+                </div>
+            </div>
+            <h3 class="text-lg font-semibold text-center mb-2">Terminate Account</h3>
+            <div class="bg-orange-50 border border-orange-100 rounded-xl p-4 mb-5 space-y-2">
+                <p class="text-orange-800 text-xs font-semibold flex items-center gap-1.5">
+                    <i data-lucide="shield-off" class="w-3 h-3"></i> What will happen to {{ terminateTarget.name }}:
+                </p>
+                <ul class="space-y-1.5 text-xs text-orange-700 list-disc list-inside">
+                    <li>Account set to Inactive</li>
+                    <li>Tenant blocked from portal</li>
+                    <li>Unit will be freed up</li>
+                </ul>
+            </div>
+            <div class="flex gap-3">
+                <button ng-click="closeModals()" class="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-700 text-sm hover:bg-slate-50 transition-all">Cancel</button>
+                <button ng-click="confirmTerminate()" class="flex-1 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white text-sm font-medium transition-all">Terminate</button>
+            </div>
+        </div>
+    </div>
+
+    <div ng-show="deleteTarget" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50">
+        <div class="bg-white rounded-2xl w-full max-w-sm p-6 shadow-xl relative">
+            <h3 class="text-lg font-semibold mb-2">Remove Tenant</h3>
+            <p class="text-slate-600 text-sm mb-5">Are you sure you want to remove <strong>{{ deleteTarget.name }}</strong>? This cannot be undone.</p>
+            <div class="flex gap-3">
+                <button ng-click="closeModals()" class="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-700 text-sm hover:bg-slate-50 transition-all">Cancel</button>
+                <button ng-click="confirmDelete()" class="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm transition-all">Remove</button>
+            </div>
+        </div>
+    </div>*@
+</div>
+

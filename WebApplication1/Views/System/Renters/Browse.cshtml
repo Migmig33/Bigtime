@@ -1,0 +1,124 @@
+﻿@{
+    Layout = "~/Views/Shared/_RentersLayout.cshtml";
+}
+<div class="min-h-screen bg-slate-50">
+
+    <div ng-if="!vm.bannerDismissed" class="bg-gradient-to-r from-green-600 to-green-700 overflow-hidden transition-all duration-300">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-4">
+            <p class="text-white text-sm">
+                🏠 <strong>Welcome!</strong> All listed units are vacant and ready to book. Sign-up required.
+            </p>
+            <button ng-click="vm.bannerDismissed = true" class="text-white/70 hover:text-white transition-colors flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-white/50 rounded" aria-label="Dismiss banner">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 6 6 18" />
+                    <path d="m6 6 12 12" />
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="mb-6">
+            <h1 class="text-slate-900 mb-1 text-2xl font-bold">Browse Units</h1>
+            <p class="text-slate-500 text-sm">
+                {{ vm.filteredUnits.length }} vacant unit{{ vm.filteredUnits.length !== 1 ? "s" : "" }} available to book
+            </p>
+        </div>
+
+        <div class="flex gap-3 mb-4 flex-wrap">
+            <div class="relative flex-1 min-w-64">
+                <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400">
+                    <circle cx="11" cy="11" r="8" />
+                    <path d="m21 21-4.3-4.3" />
+                </svg>
+
+                <input type="text" ng-model="vm.query" ng-model-options="{ debounce: 300 }" placeholder="Search by name, area, amenity..." class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-green-500 transition-all" aria-label="Search units" />
+
+                <button ng-if="vm.query" ng-click="vm.clearQuery()" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M18 6 6 18" />
+                        <path d="m6 6 12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <button ng-click="vm.showFilters = !vm.showFilters" ng-class="{'bg-green-600 text-white border-green-600': vm.showFilters || vm.activeFilterCount > 0, 'bg-white text-slate-700 border-slate-200 hover:border-slate-300': !vm.showFilters && vm.activeFilterCount === 0}" class="flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm transition-all focus:outline-none focus:ring-2 focus:ring-green-500">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="21" x2="14" y1="4" y2="4" />
+                    <line x1="10" x2="3" y1="4" y2="4" />
+                    <line x1="21" x2="12" y1="12" y2="12" />
+                    <line x1="8" x2="3" y1="12" y2="12" />
+                    <line x1="21" x2="16" y1="20" y2="20" />
+                    <line x1="12" x2="3" y1="20" y2="20" />
+                    <line x1="14" x2="14" y1="2" y2="6" />
+                    <line x1="8" x2="8" y1="10" y2="14" />
+                    <line x1="16" x2="16" y1="18" y2="22" />
+                </svg>
+                Filters
+
+                <span ng-if="vm.activeFilterCount > 0" class="w-5 h-5 rounded-full bg-white text-green-600 text-xs flex items-center justify-center font-semibold">
+                    {{ vm.activeFilterCount }}
+                </span>
+
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform" ng-class="{'rotate-180': vm.showFilters}">
+                    <path d="m6 9 6 6 6-6" />
+                </svg>
+            </button>
+
+            <button ng-if="vm.activeFilterCount > 0 || vm.query" ng-click="vm.clearAll()" class="px-3 py-2.5 rounded-xl text-sm text-slate-500 hover:text-slate-700 hover:bg-white border border-slate-200 transition-all">
+                Clear all
+            </button>
+        </div>
+
+        <div ng-show="vm.showFilters" class="overflow-hidden mb-4 transition-all duration-300">
+            <div class="bg-white border border-slate-200 rounded-2xl p-5 space-y-5">
+
+                <div>
+                    <p class="text-sm text-slate-700 font-medium mb-2">Unit Type</p>
+                    <div class="flex flex-wrap gap-2">
+                        <button ng-repeat="bed in vm.BED_OPTIONS" ng-click="vm.toggleBed(bed)" ng-class="{'bg-green-600 text-white border-green-600': vm.selectedBeds.indexOf(bed) !== -1, 'bg-slate-50 text-slate-700 border-slate-200 hover:border-green-300': vm.selectedBeds.indexOf(bed) === -1}" class="px-3 py-1.5 rounded-full text-sm border transition-all focus:outline-none focus:ring-2 focus:ring-green-500">
+                            {{ bed }}
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <p class="text-sm text-slate-700 font-medium mb-2">Price Range (₱/mo)</p>
+                    <div class="flex gap-3 items-center">
+                        <input type="number" ng-model="vm.priceMin" ng-model-options="{ debounce: 300 }" placeholder="Min" class="w-28 px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+                        <span class="text-slate-400">—</span>
+                        <input type="number" ng-model="vm.priceMax" ng-model-options="{ debounce: 300 }" placeholder="Max" class="w-28 px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+                    </div>
+                </div>
+
+                <div>
+                    <p class="text-sm text-slate-700 font-medium mb-2">Amenities</p>
+                    <div class="flex flex-wrap gap-2">
+                        <button ng-repeat="a in vm.AMENITY_OPTIONS" ng-click="vm.toggleAmenity(a)" ng-class="{'bg-green-600 text-white border-green-600': vm.selectedAmenities.indexOf(a) !== -1, 'bg-slate-50 text-slate-700 border-slate-200 hover:border-green-300': vm.selectedAmenities.indexOf(a) === -1}" class="px-3 py-1.5 rounded-full text-sm border transition-all focus:outline-none focus:ring-2 focus:ring-green-500">
+                            {{ a }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div ng-if="vm.filteredUnits.length === 0" class="text-center py-20">
+            <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400">
+                    <circle cx="11" cy="11" r="8" />
+                    <path d="m21 21-4.3-4.3" />
+                </svg>
+            </div>
+            <h3 class="text-slate-700 mb-2 font-semibold">No units found</h3>
+            <p class="text-slate-400 text-sm mb-4">Try adjusting your filters or search terms</p>
+            <button ng-click="vm.clearAll()" class="px-4 py-2 bg-green-600 text-white rounded-xl text-sm hover:bg-green-700 transition-all">
+                Clear filters
+            </button>
+        </div>
+
+        <div ng-if="vm.filteredUnits.length > 0" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+            <unit-card ng-repeat="unit in vm.filteredUnits" unit="unit" occupancy-status="'Vacant'" ng-click="vm.goToUnit(unit.id)"></unit-card>
+        </div>
+
+    </div>
+</div>
