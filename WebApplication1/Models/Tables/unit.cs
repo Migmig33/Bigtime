@@ -8,7 +8,7 @@ namespace WebApplication1.Models.Tables
     public class unit
     {
         public int Uid { get; set; }
-        public string Uname { get; set; }
+        public string unitName { get; set; }
         public double price { get; set; }
         public string beds { get; set; }
         public int sqm { get; set; }
@@ -19,6 +19,7 @@ namespace WebApplication1.Models.Tables
         public string status { get; set; }
         public string address { get; set; }
         public int maxOccupants { get; set; }
+
 
     }
 }

@@ -1,6 +1,19 @@
 ﻿@{
     Layout = "~/Views/Shared/_AdminLayout.cshtml";
 }
+<!-- Toast Notification -->
+<div ng-show="toastShow"
+     style="animation: slideDown 0.5s ease-in-out"
+     class="fixed top-4 right-4 z-[100] flex items-center gap-3 bg-white border border-slate-200 shadow-sm rounded-2xl px-5 py-4 w-[400px] max-w-full transition-all duration-300">
+
+    <!-- Icon -->
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 text-gray-900 shrink-0">
+        <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zM12.75 8a.75.75 0 00-1.5 0v4a.75.75 0 001.5 0V8zM12 16a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+    </svg>
+
+    <!-- Dynamic Message -->
+    <span class="text-slate-800 font-medium text-[15px]">{{ toast.message }}</span>
+</div>
 
 <!-- Delete Modal -->
 <div id="deleteModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40">
@@ -8,19 +21,19 @@
         <h2 class="text-slate-900 font-semibold text-base mb-2">Delete Unit</h2>
         <p class="text-slate-600 text-sm mb-5">Are you sure you want to delete this unit? This action cannot be undone.</p>
         <div class="flex gap-3">
-            <button onclick="closeDeleteModal()" class="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-700 text-sm hover:bg-slate-50 transition-all">Cancel</button>
-            <button onclick="confirmDelete()" class="flex-1 py-2.5 rounded-xl bg-red-600 text-white text-sm hover:bg-red-700 transition-all">Delete</button>
+            <button ng-click="" class="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-700 text-sm hover:bg-slate-50 transition-all">Cancel</button>
+            <button ng-click="" class="flex-1 py-2.5 rounded-xl bg-red-600 text-white text-sm hover:bg-red-700 transition-all">Delete</button>
         </div>
     </div>
 </div>
 
 <!-- Unit Editor Modal -->
-<div id="editorModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+<div id="editorModal" class=" fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" ng-show="editorModal">
     <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
         <!-- Modal Header -->
         <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100">
             <h2 id="modalTitle" class="text-slate-900 font-semibold text-base">Add New Unit</h2>
-            <button onclick="closeEditor()" class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-all">
+            <button ng-click="editorModal = false" class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-all">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
             </button>
         </div>
@@ -29,99 +42,114 @@
         <div class="overflow-y-auto flex-1 p-6 space-y-5">
 
             <!-- Photos -->
-            <div>
-                <label class="block text-sm text-slate-700 font-medium mb-2">Photos (max 3)</label>
-                <div id="imagePreviews" class="flex gap-3 flex-wrap">
-                    <button onclick="document.getElementById('photoInput').click()" id="addPhotoBtn"
-                            class="w-28 h-20 rounded-xl border-2 border-dashed border-slate-200 hover:border-green-300 flex flex-col items-center justify-center gap-1 text-slate-400 hover:text-green-500 transition-all">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
-                        <span class="text-xs">Add Photo</span>
-                    </button>
+                <div>
+                    <label class="block text-sm text-slate-700 font-medium mb-2">
+                        Photos (max 10)
+                    </label>
+
+                    <div class="flex gap-3 flex-wrap">
+
+                        <!-- 1. The Image Previews -->
+                        <!-- We use ng-repeat instead of .map() -->
+                        <div ng-repeat="img in imageUrls track by $index"
+                             class="relative w-28 h-20 rounded-xl overflow-hidden border border-slate-200 group transition-all duration-300">
+
+                            <img ng-src="{{ img }}" alt="Photo {{$index + 1}}" class="w-full h-full object-cover" />
+
+                            <!-- The Hover "X" Button -->
+                            <button type="button" ng-click="removeImage($index)"
+                                    class="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm">
+                                <!-- Pure SVG instead of React <X /> -->
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                            </button>
+                        </div>
+
+                        <!-- 2. The Add Photo Button -->
+                        <!-- ng-show acts like your {imagePreviews.length < 10 && (...)} -->
+                        <!-- Wrapping it in a <label> automatically clicks the hidden input! -->
+                        <label for="photoInput" ng-show="imageUrls.length < 10"
+                               class="w-28 h-20 rounded-xl border-2 border-dashed border-slate-200 hover:border-green-300 flex flex-col items-center justify-center gap-1 text-slate-400 hover:text-green-500 transition-all cursor-pointer">
+                            <!-- Pure SVG instead of React <ImagePlus /> -->
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
+                            <span class="text-xs">Add Photo</span>
+                        </label>
+
+                    </div>
+
+                    <!-- 3. The Hidden File Input -->
+                    <input type="file" id="photoInput" accept="image/*" multiple class="hidden"
+                           onchange="angular.element(this).scope().handleImageUpload(this.files)" />
                 </div>
-                <input type="file" id="photoInput" accept="image/*" multiple class="hidden" onchange="handleImageUpload(event)" />
-            </div>
 
             <!-- Video -->
-            <div>
-                <label class="block text-sm text-slate-700 font-medium mb-1">Unit Showcase Video <span class="text-slate-400 font-normal text-xs">(optional · min. 10 seconds)</span></label>
-                <div id="videoUploadArea">
-                    <button onclick="document.getElementById('videoInput').click()"
-                            class="w-full h-28 rounded-2xl border-2 border-dashed border-slate-200 hover:border-green-300 bg-slate-50 hover:bg-green-50/30 flex flex-col items-center justify-center gap-2 text-slate-400 hover:text-green-600 transition-all">
-                        <div class="w-10 h-10 bg-slate-100 rounded-xl flex items-center justify-center">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="15" height="10" rx="2" /><polygon points="17 9 22 7 22 17 17 15" /></svg>
+                <div>
+                    <label class="block text-sm text-slate-700 font-medium mb-2">Unit Video (Optional)</label>
+
+                    <!-- 1. The 'for' attribute MUST match the input's 'id' -->
+                    <label for="videoInput" class="block cursor-pointer">
+                        <div class="w-full h-24 rounded-xl border-2 border-dashed border-slate-200 hover:border-green-300 flex flex-col items-center justify-center gap-1 text-slate-400 hover:text-green-500 transition-all">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
+                            <span class="text-xs">Click to upload videos</span>
                         </div>
-                        <span class="text-xs font-medium">Click to upload video</span>
-                        <span class="text-xs text-slate-300">MP4, MOV, WebM · min. 10 seconds</span>
-                    </button>
+                    </label>
+
+                    <!-- 2. The 'id' MUST match the label's 'for' -->
+                    <!-- accept="video/*" forces the file picker to only show videos -->
+                    <input type="file" id="videoInput" accept="video/*" class="hidden"
+                           onchange="angular.element(this).scope().handleVideoUpload(this.files)" />
                 </div>
-                <div id="videoPreviewArea" class="hidden rounded-2xl overflow-hidden border border-slate-200 bg-black">
-                    <video id="videoPlayer" controls class="w-full max-h-52 object-contain"></video>
-                    <div class="flex items-center justify-between px-3 py-2 bg-slate-900/80">
-                        <div class="flex items-center gap-2 min-w-0">
-                            <div class="w-6 h-6 bg-green-600 rounded-md flex items-center justify-center flex-shrink-0">
-                                <svg width="11" height="11" viewBox="0 0 24 24" fill="white" stroke="none"><polygon points="5 3 19 12 5 21" /></svg>
-                            </div>
-                            <span id="videoName" class="text-white text-xs truncate max-w-[180px]"></span>
-                            <span id="videoDuration" class="text-slate-400 text-xs flex-shrink-0"></span>
-                        </div>
-                        <button onclick="removeVideo()" class="text-xs text-red-400 hover:text-red-300 bg-red-900/30 hover:bg-red-900/50 px-2 py-1 rounded-lg transition-all">✕ Remove</button>
-                    </div>
-                </div>
-                <input type="file" id="videoInput" accept="video/*" class="hidden" onchange="handleVideoUpload(event)" />
-            </div>
 
             <!-- Fields Grid -->
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm text-slate-700 font-medium mb-1">Unit Name *</label>
-                    <input type="text" id="fieldName" placeholder="e.g. Studio A101"
+                    <input type="text" id="fieldName" ng-model="unitName" placeholder="e.g. Studio A101"
                            class="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
                 </div>
                 <div>
                     <label class="block text-sm text-slate-700 font-medium mb-1">Floor</label>
-                    <input type="text" id="fieldFloor" placeholder="e.g. 3F"
+                    <input type="text" id="fieldFloor" ng-model="floor" placeholder="e.g. 3F"
                            class="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
                 </div>
                 <div>
                     <label class="block text-sm text-slate-700 font-medium mb-1">Monthly Rent (₱) *</label>
-                    <input type="number" id="fieldPrice" placeholder="e.g. 18000"
+                    <input type="number" id="fieldPrice" ng-model="price" placeholder="e.g. 18000"
                            class="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
                 </div>
                 <div>
                     <label class="block text-sm text-slate-700 font-medium mb-1">Size (m²)</label>
-                    <input type="number" id="fieldSqm" placeholder="e.g. 22"
+                    <input type="number" id="fieldSqm" ng-model="sqm" placeholder="e.g. 22"
                            class="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
                 </div>
                 <div>
                     <label class="block text-sm text-slate-700 font-medium mb-1">Unit Type</label>
-                    <select id="fieldBeds" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
-                        <option>Studio</option>
-                        <option>1 Bedroom</option>
-                        <option>2 Bedroom</option>
-                        <option>3 Bedroom</option>
+                    <select id="fieldBeds" ng-model="beds" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+                        <option value="Studio">Studio</option>
+                        <option value="1 Bedroom">1 Bedroom</option>
+                        <option value="2 Bedroom">2 Bedroom</option>
                     </select>
                 </div>
                 <div>
                     <label class="block text-sm text-slate-700 font-medium mb-1">Status</label>
-                    <select id="fieldStatus" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <select id="fieldStatus" ng-model="status" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
                         <option value="active">Active</option>
                         <option value="inactive">Inactive</option>
                     </select>
                 </div>
                 <div>
                     <label class="block text-sm text-slate-700 font-medium mb-1">Max Occupants</label>
-                    <input type="number" id="fieldOccupants" min="1" max="20" placeholder="e.g. 2"
+                    <input type="number" ng-model="maxOccupants" id="fieldOccupants" min="1" max="20" placeholder="e.g. 2"
                            class="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
                     <p class="text-xs text-slate-400 mt-1">Max number of people allowed to live here</p>
                 </div>
                 <div class="sm:col-span-2">
                     <label class="block text-sm text-slate-700 font-medium mb-1">Address</label>
-                    <input type="text" id="fieldAddress" placeholder="e.g. Makati City, Metro Manila"
+                    <input type="text" id="fieldAddress" ng-model="address" placeholder="e.g. Green Residences, Taft Avenue, Manila"
                            class="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
                 </div>
                 <div class="sm:col-span-2">
                     <label class="block text-sm text-slate-700 font-medium mb-1">Description</label>
-                    <textarea id="fieldDescription" rows="3" placeholder="Describe the unit..."
+                    <textarea id="fieldDescription" rows="3" ng-model="description" placeholder="Describe the unit..."
                               class="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"></textarea>
                 </div>
             </div>
@@ -130,7 +158,7 @@
             <div>
                 <label class="block text-sm text-slate-700 font-medium mb-2">Fallback Color</label>
                 <div class="flex items-center gap-3">
-                    <input type="color" id="fieldColor" value="#1F6FEB"
+                    <input type="color" id="fieldColor" ng-model="colorCode" value="#1F6FEB"
                            class="w-10 h-10 rounded-lg cursor-pointer border border-slate-200" />
                     <span id="colorHex" class="text-slate-500 text-sm font-mono">#1F6FEB</span>
                 </div>
@@ -140,22 +168,18 @@
             <div>
                 <label class="block text-sm text-slate-700 font-medium mb-2">Amenities</label>
                 <div class="flex flex-wrap gap-2" id="amenitiesContainer">
-                    @foreach (var amenity in new[] { "WiFi", "Air Conditioning", "Water Included", "Parking", "CCTV", "Laundry Area", "Elevator", "Security Guard", "Balcony", "Furnished" })
-                    {
-                        <button type="button" onclick="toggleAmenity(this)"
-                                data-amenity="@amenity"
-                                class="amenity-btn px-3 py-1.5 rounded-full text-xs border border-slate-200 bg-slate-50 text-slate-600 hover:border-green-300 transition-all">
-                            @amenity
-                        </button>
-                    }
+                    <button type="button" ng-click="" ng-model="amenityId" ng-repeat="amenity in amenities"
+                            class="amenity-btn px-3 py-1.5 rounded-full text-xs border border-slate-200 bg-slate-50 text-slate-600 hover:border-green-300 transition-all">
+                        {{ amenity }}
+                    </button>
                 </div>
             </div>
         </div>
 
         <!-- Modal Footer -->
         <div class="flex gap-3 justify-end px-6 py-4 border-t border-slate-100">
-            <button onclick="closeEditor()" class="px-4 py-2 rounded-xl text-sm text-slate-600 hover:bg-slate-100 border border-slate-200 transition-all">Cancel</button>
-            <button onclick="saveUnit()" class="px-5 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm font-medium transition-all">
+            <button ng-click="" class="px-4 py-2 rounded-xl text-sm text-slate-600 hover:bg-slate-100 border border-slate-200 transition-all">Cancel</button>
+            <button ng-click="saveUnit()" class="px-5 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm font-medium transition-all">
                 <span id="saveLabel">Create Unit</span>
             </button>
         </div>
@@ -163,15 +187,15 @@
 </div>
 
 <!-- Page Content -->
-<div class="p-6 overflow-y-auto flex-1">
+<div class="p-6 overflow-y-auto flex-1" ng-init="currentPage = 'Unit'; getAllUnits()">
 
     <!-- Header -->
     <div class="flex items-center justify-between mb-6">
         <div>
             <h1 class="text-slate-900 text-2xl font-bold">Units</h1>
-            <p class="text-slate-500 text-sm">@ViewBag.TotalUnits total units</p>
+            <p class="text-slate-500 text-sm">{{ totalUnits }} total units</p>
         </div>
-        <button onclick="openCreate()" class="flex items-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm font-medium transition-all">
+        <button ng-click="editorModal = true" class="flex items-center gap-2 px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm font-medium transition-all">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
             Add Unit
         </button>
@@ -181,13 +205,13 @@
     <div class="flex gap-2 mb-3">
         <div class="relative flex-1">
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
-            <input type="text" id="searchInput" placeholder="Search units..." onkeyup="filterTable()"
+            <input type="text" ng-model="searchQuery" placeholder="Search units..."
                    class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
         </div>
-        <button onclick="toggleSort()" id="sortBtn"
+        <button ng-click="" id="sortBtn"
                 class="flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 hover:border-green-300 hover:text-green-700 text-sm font-medium transition-all">
-            <svg id="sortIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M7 12h10M11 18h2" /></svg>
-            <span class="hidden sm:inline" id="sortLabel">A → Z</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M7 12h10M11 18h2" /></svg>
+            <span class="hidden sm:inline">A → Z</span>
         </button>
     </div>
 
@@ -196,25 +220,25 @@
         <!-- Status -->
         <div class="flex items-center gap-2 flex-wrap">
             <span class="text-xs text-slate-400 font-medium">Status:</span>
-            <button onclick="setStatusFilter('All', this)" class="filter-status-btn px-3 py-1 rounded-lg text-xs font-medium border bg-green-600 text-white border-green-600 transition-all">All</button>
-            <button onclick="setStatusFilter('active', this)" class="filter-status-btn px-3 py-1 rounded-lg text-xs font-medium border bg-white text-slate-600 border-slate-200 hover:border-slate-300 transition-all">Active</button>
-            <button onclick="setStatusFilter('inactive', this)" class="filter-status-btn px-3 py-1 rounded-lg text-xs font-medium border bg-white text-slate-600 border-slate-200 hover:border-slate-300 transition-all">Inactive</button>
+            <button ng-click="" class="px-3 py-1 rounded-lg text-xs font-medium border bg-green-600 text-white border-green-600 transition-all">All</button>
+            <button ng-click="" class="px-3 py-1 rounded-lg text-xs font-medium border bg-white text-slate-600 border-slate-200 hover:border-slate-300 transition-all">Active</button>
+            <button ng-click="" class="px-3 py-1 rounded-lg text-xs font-medium border bg-white text-slate-600 border-slate-200 hover:border-slate-300 transition-all">Inactive</button>
         </div>
         <div class="hidden sm:block w-px bg-slate-200 self-stretch"></div>
         <!-- Occupancy -->
         <div class="flex items-center gap-2 flex-wrap">
             <span class="text-xs text-slate-400 font-medium">Occupancy:</span>
-            <button onclick="setOccupancyFilter('All', this)" class="filter-occ-btn px-3 py-1 rounded-lg text-xs font-medium border bg-green-600 text-white border-green-600 transition-all">All</button>
-            <button onclick="setOccupancyFilter('Vacant', this)" class="filter-occ-btn px-3 py-1 rounded-lg text-xs font-medium border bg-white text-slate-600 border-slate-200 hover:border-slate-300 transition-all">Vacant</button>
-            <button onclick="setOccupancyFilter('Occupied', this)" class="filter-occ-btn px-3 py-1 rounded-lg text-xs font-medium border bg-white text-slate-600 border-slate-200 hover:border-slate-300 transition-all">Occupied</button>
-            <button onclick="setOccupancyFilter('Expiring', this)" class="filter-occ-btn px-3 py-1 rounded-lg text-xs font-medium border bg-white text-slate-600 border-slate-200 hover:border-slate-300 transition-all">Expiring</button>
+            <button ng-click="" class="px-3 py-1 rounded-lg text-xs font-medium border bg-green-600 text-white border-green-600 transition-all">All</button>
+            <button ng-click="" class="px-3 py-1 rounded-lg text-xs font-medium border bg-white text-slate-600 border-slate-200 hover:border-slate-300 transition-all">Vacant</button>
+            <button ng-click="" class="px-3 py-1 rounded-lg text-xs font-medium border bg-white text-slate-600 border-slate-200 hover:border-slate-300 transition-all">Occupied</button>
+            <button ng-click="" class="px-3 py-1 rounded-lg text-xs font-medium border bg-white text-slate-600 border-slate-200 hover:border-slate-300 transition-all">Expiring</button>
         </div>
     </div>
 
     <!-- Table -->
     <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <div class="overflow-x-auto">
-            <table class="w-full" id="unitsTable">
+            <table class="w-full">
                 <thead>
                     <tr class="bg-slate-50 border-b border-slate-100 text-left">
                         <th class="px-5 py-3 text-xs text-slate-500 font-medium">Unit</th>
@@ -225,65 +249,84 @@
                         <th class="px-5 py-3 text-xs text-slate-500 font-medium">Actions</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-50" id="unitsBody">
-                    @foreach (var unit in Model)
-                    {
-                        <tr class="hover:bg-slate-50 transition-colors unit-row"
-                            data-name="@unit.Name.ToLower()"
-                            data-status="@unit.Status"
-                            data-occupancy="@unit.Occupancy">
-                            <td class="px-5 py-3">
-                                <div class="flex items-center gap-3">
-                                    @if (!string.IsNullOrEmpty(unit.ImageUrl))
-                                    {
-                                        <img src="@unit.ImageUrl" alt="@unit.Name" class="w-10 h-8 rounded-lg object-cover flex-shrink-0" />
-                                    }
-                                    else
-                                    {
-                                        <div class="w-10 h-8 rounded-lg flex-shrink-0" style="background-color: @unit.Color"></div>
-                                    }
-                                    <div>
-                                        <p class="text-slate-900 text-sm font-medium">@unit.Name</p>
-                                        <p class="text-slate-400 text-xs">@unit.Floor</p>
-                                    </div>
+                <tbody class="divide-y divide-slate-50">
+                    <tr ng-repeat="unit in units" class="hover:bg-slate-50 transition-colors">
+
+                        <!-- Unit Name + Image -->
+                        <td class="px-5 py-3">
+                            <div class="flex items-center gap-3">
+                                <img ng-if="unit.imageUrl"
+                                     ng-src="{{ unit.imageUrl }}"
+                                     class="w-10 h-8 rounded-lg object-cover flex-shrink-0" />
+                                <div ng-if="!unit.imageUrl"
+                                     class="w-10 h-8 rounded-lg flex-shrink-0"
+                                     ng-style="{ 'background-color': unit.colorCode }"></div>
+                                <div>
+                                    <p class="text-slate-900 text-sm font-medium">{{ unit.unitName }}</p>
+                                    <p class="text-slate-400 text-xs">{{ unit.floor }}</p>
                                 </div>
-                            </td>
-                            <td class="px-5 py-3 text-sm text-slate-600">@unit.Beds · @unit.Sqm m²</td>
-                            <td class="px-5 py-3 text-sm text-slate-900 font-medium">₱@unit.Price.ToString("N0")</td>
-                            <td class="px-5 py-3">
-                                @{
-                                    var occColor = unit.Occupancy == "Occupied" ? "bg-green-50 text-green-700"
-                                                 : unit.Occupancy == "Expiring" ? "bg-amber-50 text-amber-700"
-                                                 : "bg-blue-50 text-blue-700";
-                                }
-                                <span class="px-2.5 py-1 rounded-full text-xs font-medium @occColor">@unit.Occupancy</span>
-                            </td>
-                            <td class="px-5 py-3">
-                                @{
-                                    var statusColor = unit.Status == "active" ? "bg-green-50 text-green-700" : "bg-slate-100 text-slate-500";
-                                }
-                                <span class="px-2.5 py-1 rounded-full text-xs font-medium @statusColor">
-                                    @(unit.Status == "active" ? "Active" : "Inactive")
-                                </span>
-                            </td>
-                            <td class="px-5 py-3">
-                                <div class="flex items-center gap-2">
-                                    <button onclick="openEdit('@unit.Id')" class="p-1.5 rounded-lg hover:bg-green-50 text-slate-400 hover:text-green-600 transition-all">
-                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
-                                    </button>
-                                    <button onclick="openDeleteModal('@unit.Id')" class="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600 transition-all">
-                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><path d="M10 11v6" /><path d="M14 11v6" /><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" /></svg>
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                    }
+                            </div>
+                        </td>
+
+                        <!-- Type / Size -->
+                        <td class="px-5 py-3 text-sm text-slate-600">{{ unit.beds }} · {{ unit.sqm }} m²</td>
+
+                        <!-- Price -->
+                        <td class="px-5 py-3 text-sm text-slate-900 font-medium">₱{{ unit.price | number:0 }}</td>
+
+                        <!-- Occupancy -->
+                        <td class="px-5 py-3">
+                            <span class="px-2.5 py-1 rounded-full text-xs font-medium"
+                                  ng-class="{
+                          'bg-green-50 text-green-700' : unit.occupancy === 'Occupied',
+                          'bg-amber-50 text-amber-700' : unit.occupancy === 'Expiring',
+                          'bg-blue-50  text-blue-700'  : unit.occupancy === 'Vacant'
+                      }">
+                                {{ unit.occupancy }}
+                            </span>
+                        </td>
+
+                        <!-- Status -->
+                        <td class="px-5 py-3">
+                            <span class="px-2.5 py-1 rounded-full text-xs font-medium"
+                                  ng-class="{
+                          'bg-green-50 text-green-700' : unit.status === 'active',
+                          'bg-slate-100 text-slate-500': unit.status === 'inactive'
+                      }">
+                                {{ unit.status === 'active' ? 'Active' : 'Inactive' }}
+                            </span>
+                        </td>
+
+                        <!-- Actions -->
+                        <td class="px-5 py-3">
+                            <div class="flex items-center gap-2">
+                                <button ng-click="" class="p-1.5 rounded-lg hover:bg-green-50 text-slate-400 hover:text-green-600 transition-all">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                    </svg>
+                                </button>
+                                <button ng-click="" class="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600 transition-all">
+                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polyline points="3 6 5 6 21 6" />
+                                        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                                        <path d="M10 11v6" />
+                                        <path d="M14 11v6" />
+                                        <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </td>
+
+                    </tr>
+
+                    <!-- Empty State -->
+                    <tr ng-if="units.length === 0">
+                        <td colspan="6" class="text-center py-12 text-slate-400 text-sm">No units found</td>
+                    </tr>
+
                 </tbody>
             </table>
-            <div id="emptyState" class="hidden text-center py-12 text-slate-400 text-sm">No units found</div>
         </div>
     </div>
 </div>
-
-
-

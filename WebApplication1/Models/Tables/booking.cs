@@ -12,7 +12,7 @@ namespace WebApplication1.Models.Tables
         public string guestName { get; set; }
         public string guestEmail { get; set; }
         public string guestPhone { get; set; }
-        public DateTime bookingDateTime { get; set; }
+        public DateTime bookingDatetime { get; set; }
         public string status { get; set; }
         public string notes { get; set; }
         public string cancelReason { get; set; }

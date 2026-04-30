@@ -18,8 +18,8 @@ namespace WebApplication1.Models.Tables
         public string status { get; set; }
         public string address { get; set; }
         public string occupation { get; set; }
-        public string password { get; set; }
-        public int occupancyType{ get; set; }
+        public string passwordHash { get; set; }
+        public int occupancyTypeId{ get; set; }
 
     }
 }

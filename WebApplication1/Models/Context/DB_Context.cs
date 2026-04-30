@@ -24,6 +24,7 @@ namespace WebApplication1.Models.Context
         public virtual DbSet<co_occupant> co_occupant { get; set; }
         public virtual DbSet<booking> booking { get; set; }
         public virtual DbSet<amenity> amenity { get; set; }
+        public virtual DbSet<admin> admin { get; set; }
 
         protected override void OnModelCreating(DbModelBuilder modelBuilder)
         {
@@ -39,6 +40,7 @@ namespace WebApplication1.Models.Context
             modelBuilder.Configurations.Add(new Maps.co_occupant_maps());
             modelBuilder.Configurations.Add(new Maps.booking_maps());
             modelBuilder.Configurations.Add(new Maps.amenity_maps());
+            modelBuilder.Configurations.Add(new Maps.admin_maps());
         }
 
     }

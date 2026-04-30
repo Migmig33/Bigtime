@@ -3,14 +3,14 @@
 }
 
 
-<div class="p-6 space-y-6 overflow-y-auto flex-1">
+<div class="p-6 space-y-6 overflow-y-auto flex-1" ng-init="getDataNum(); currentPage = 'Dashboard'">
 
     <div class="flex items-center justify-between">
         <div>
             <h1 class="text-slate-900 text-2xl font-bold">Dashboard</h1>
             <p class="text-slate-500 text-sm">Overview of GreenResidences operations</p>
         </div>
-        <div class="text-slate-400 text-sm">May 2026</div>
+        <div class="text-slate-400 text-sm">{{thisMonthhs | date:'MM-yyyy'}}</div>
     </div>
      
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -20,13 +20,9 @@
                 <div class="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z" /><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2" /><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2" /></svg>
                 </div>
-                <span class="flex items-center gap-0.5 text-xs text-emerald-600 font-medium">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" /></svg>
-                    +2 this month
-                </span>
             </div>
             <p class="text-slate-500 text-xs mb-1">Active Units</p>
-            <p class="text-slate-900 text-2xl font-bold">12</p>
+            <p class="text-slate-900 text-2xl font-bold">{{activeUnitNum.length || 0}}</p>
             <p class="text-slate-400 text-xs mt-1">3 vacant</p>
         </button>
 
@@ -37,7 +33,7 @@
                 </div>
             </div>
             <p class="text-slate-500 text-xs mb-1">Pending Bookings</p>
-            <p class="text-slate-900 text-2xl font-bold">5</p>
+            <p class="text-slate-900 text-2xl font-bold">{{pendingBookNum.length || 0}}</p>
             <p class="text-slate-400 text-xs mt-1">Awaiting review</p>
         </button>
 
@@ -46,13 +42,10 @@
                 <div class="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" /><line x1="1" y1="10" x2="23" y2="10" /></svg>
                 </div>
-                <span class="flex items-center gap-0.5 text-xs text-emerald-600 font-medium">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" /></svg>
-                    +12%
-                </span>
+                
             </div>
             <p class="text-slate-500 text-xs mb-1">Revenue (Apr)</p>
-            <p class="text-slate-900 text-2xl font-bold">₱85,000</p>
+            <p class="text-slate-900 text-2xl font-bold">₱{{totalPayment || 0}}</p>
             <p class="text-slate-400 text-xs mt-1">2 overdue</p>
         </button>
 
@@ -63,7 +56,7 @@
                 </div>
             </div>
             <p class="text-slate-500 text-xs mb-1">Open Maintenance</p>
-            <p class="text-slate-900 text-2xl font-bold">4</p>
+            <p class="text-slate-900 text-2xl font-bold">{{pendingRequestNum.length || 0}}</p>
             <p class="text-slate-400 text-xs mt-1">Requests pending</p>
         </button>
 
@@ -73,69 +66,72 @@
 
         <div class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
             <h3 class="text-slate-900 font-semibold mb-4">Monthly Revenue</h3>
-            <canvas id="revenueChart" height="200"></canvas>
+            <canvas class="chart chart-line"
+                    chart-data="linedata"
+                    chart-labels="linelabels"
+                    chart-series="lineseries"
+                    chart-options="options">
+            </canvas>
         </div>
+
 
         <div class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
             <h3 class="text-slate-900 font-semibold mb-4">Occupancy Trend</h3>
-            <canvas id="occupancyChart" height="200"></canvas>
+            <canvas id="bar" class="chart chart-bar"
+                    chart-data="bardata" chart-labels="barlabels">
+                chart-series="barseries"
+            </canvas>
         </div>
 
     </div>
 
     <div class="bg-white rounded-2xl border border-slate-100 shadow-sm">
+
+        <!-- Header -->
         <div class="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-            <h3 class="text-slate-900 font-semibold">Recent Bookings</h3>
-            <button ng-click="goTo('Bookings')" class="text-green-600 text-xs flex items-center gap-1 hover:text-green-700 transition-colors">
+            <h3 class="text-slate-900">Recent Bookings</h3>
+
+            <button ng-click="goTo('Bookings')"
+                    class="text-green-600 text-xs flex items-center gap-1 hover:text-green-700 transition-colors focus:outline-none">
+
                 View all
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="7" y1="17" x2="17" y2="7" /><polyline points="7 7 17 7 17 17" /></svg>
+                <span style="font-size:12px;">↗</span>
             </button>
         </div>
+
+        <!-- List -->
         <div class="divide-y divide-slate-50">
 
-            <div class="flex items-center gap-4 px-5 py-3">
-                <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center text-green-600 text-xs font-semibold flex-shrink-0">J</div>
-                <div class="flex-1 min-w-0">
-                    <p class="text-slate-900 text-sm font-medium truncate">Juan Dela Cruz</p>
-                    <p class="text-slate-400 text-xs">Unit 3B · Apr 25</p>
-                </div>
-                <span class="text-xs font-medium px-2.5 py-1 rounded-full bg-amber-50 text-amber-600">Pending</span>
-            </div>
+            <div ng-repeat="b in recentBookings" class="flex items-center gap-4 px-5 py-3">
 
-            <div class="flex items-center gap-4 px-5 py-3">
-                <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center text-green-600 text-xs font-semibold flex-shrink-0">M</div>
-                <div class="flex-1 min-w-0">
-                    <p class="text-slate-900 text-sm font-medium truncate">Maria Santos</p>
-                    <p class="text-slate-400 text-xs">Unit 1A · Apr 23</p>
+                <!-- Avatar -->
+                <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center text-green-600 text-xs font-semibold flex-shrink-0">
+                    {{ b.name.charAt(0) }}
                 </div>
-                <span class="text-xs font-medium px-2.5 py-1 rounded-full bg-green-50 text-green-600">Approved</span>
-            </div>
 
-            <div class="flex items-center gap-4 px-5 py-3">
-                <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center text-green-600 text-xs font-semibold flex-shrink-0">R</div>
+                <!-- Info -->
                 <div class="flex-1 min-w-0">
-                    <p class="text-slate-900 text-sm font-medium truncate">Ramon Reyes</p>
-                    <p class="text-slate-400 text-xs">Unit 2C · Apr 21</p>
+                    <p class="text-slate-900 text-sm font-medium truncate">
+                        {{ b.name }}
+                    </p>
+                    <p class="text-slate-400 text-xs">
+                        {{ b.unitName }} · {{ formatDate(b.datetime) }}
+                    </p>
                 </div>
-                <span class="text-xs font-medium px-2.5 py-1 rounded-full bg-red-50 text-red-500">Rejected</span>
-            </div>
 
-            <div class="flex items-center gap-4 px-5 py-3">
-                <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center text-green-600 text-xs font-semibold flex-shrink-0">A</div>
-                <div class="flex-1 min-w-0">
-                    <p class="text-slate-900 text-sm font-medium truncate">Ana Gonzales</p>
-                    <p class="text-slate-400 text-xs">Unit 4D · Apr 20</p>
+                <!-- Status -->
+                <div>
+                    <span class="text-xs px-2 py-1 rounded-full"
+                          ng-class="{
+            'bg-green-100 text-green-600': b.status === 'Confirmed',
+            'bg-yellow-100 text-yellow-600': b.status === 'Pending',
+            'bg-gray-100 text-gray-600': b.status == 'Cancelled',
+            'bg-red-100 text-red-600': b.status === 'Declined'
+          }">
+                        {{ b.status }}
+                    </span>
                 </div>
-                <span class="text-xs font-medium px-2.5 py-1 rounded-full bg-amber-50 text-amber-600">Pending</span>
-            </div>
 
-            <div class="flex items-center gap-4 px-5 py-3">
-                <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center text-green-600 text-xs font-semibold flex-shrink-0">C</div>
-                <div class="flex-1 min-w-0">
-                    <p class="text-slate-900 text-sm font-medium truncate">Carlos Mendoza</p>
-                    <p class="text-slate-400 text-xs">Unit 2A · Apr 18</p>
-                </div>
-                <span class="text-xs font-medium px-2.5 py-1 rounded-full bg-green-50 text-green-600">Approved</span>
             </div>
 
         </div>

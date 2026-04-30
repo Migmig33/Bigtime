@@ -6,7 +6,19 @@
     <title>@ViewBag.Title</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
+
 <body ng-app="app" ng-controller="controller">
+    <style>
+        @@keyframes slideDown {
+            from{
+                opacity: 0;
+                transform: translateY(-10px);
+            }to{
+                opacity: 1;
+                transform: translateY(1px);
+             }
+        }
+    </style>
     <div class="flex">
         <!-- Desktop Sidebar -->
         <div id="admin-sidebar" class="hidden sm:flex flex-col bg-slate-800 transition-all duration-300 flex-shrink-0 w-64 h-screen sticky top-0">
@@ -21,27 +33,27 @@
 
             <!-- Nav -->
             <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-                <button ng-click="goTo('Dashboard')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-300 hover:bg-slate-700 hover:text-white transition-all">
+                <button ng-click="goTo('Dashboard')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm  transition-all" ng-class="currentPage == 'Dashboard' ? ' bg-green-600 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /></svg>
                     <span>Dashboard</span>
                 </button>
-                <button ng-click="goTo('Units')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm bg-green-600 text-white transition-all">
+                <button ng-click="goTo('Units')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm  transition-all" ng-class="currentPage == 'Unit' ? ' bg-green-600 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z" /><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2" /><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2" /></svg>
                     <span>Units</span>
                 </button>
-                <button ng-click="goTo('Tenants')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-300 hover:bg-slate-700 hover:text-white transition-all bg-slate-700/50">
+                <button ng-click="goTo('Tenants')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all" ng-class="currentPage == 'Tenant' ? ' bg-green-600 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
                     <span>Tenants</span>
                 </button>
-                <button ng-click="goTo('Bookings')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-300 hover:bg-slate-700 hover:text-white transition-all">
+                <button ng-click="goTo('Bookings')" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm  transition-all" ng-class="currentPage == 'Booking' ? ' bg-green-600 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
                     <span>Bookings</span>
                 </button>
-                <button onclick="location.href='/admin/maintenance'" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-300 hover:bg-slate-700 hover:text-white transition-all">
+                <button onclick="location.href='/admin/maintenance'" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-300 hover:bg-slate-700 hover:text-white transition-all" ng-class="currentPage == 'Maintenance' ? ' bg-green-600 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" /></svg>
                     <span>Maintenance</span>
                 </button>
-                <button onclick="location.href='/admin/payments'" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-300 hover:bg-slate-700 hover:text-white transition-all">
+                <button onclick="location.href='/admin/payments'" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm  transition-all" ng-class="currentPage == 'Payment' ? ' bg-green-600 text-white' : 'text-slate-300 hover:bg-slate-700 hover:text-white'">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" /><line x1="1" y1="10" x2="23" y2="10" /></svg>
                     <span>Payments</span>
                 </button>
@@ -98,6 +110,10 @@
     <script src="~/Scripts/jquery-3.7.0.min.js"></script>
     <script src="~/Scripts/angular.min.js"></script>
     <script src="~/Scripts/Scripts/Module.js"></script>
+    <script src="~/Scripts/Scripts/Service.js"></script>
     <script src="~/Scripts/Scripts/Controller.js"></script>
+    <script src="~/Scripts/Chart.min.js"></script>
+    <script src="~/Scripts/angular-chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </body>
 </html>
