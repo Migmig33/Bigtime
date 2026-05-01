@@ -10,6 +10,16 @@
         })
         return response;
     }
+    this.verifyCodeService = function (code) {
+        alert(code);
+        var response = $http({
+            url: "/Auth/VerifyCode",
+            method: "post",
+            data: JSON.stringify({code: code}),
+            headers: {"Content-Type": "application/json"}
+        })
+        return response;
+    }
     //Save service
     this.saveUnitService = function(data, images, id){ 
         var response = $http({

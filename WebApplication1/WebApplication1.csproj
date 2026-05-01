@@ -207,6 +207,7 @@
     <Compile Include="Models\Tables\unit.cs" />
     <Compile Include="Models\Tables\unit_amenity.cs" />
     <Compile Include="Models\Tables\unit_image.cs" />
+    <Compile Include="Models\Tables\verifycode.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Services\EmailServices.cs" />
   </ItemGroup>

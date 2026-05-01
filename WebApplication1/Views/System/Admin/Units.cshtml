@@ -208,10 +208,10 @@
             <input type="text" ng-model="searchQuery" placeholder="Search units..."
                    class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
         </div>
-        <button ng-click="" id="sortBtn"
+        <button ng-click="toggleSort()"
                 class="flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 hover:border-green-300 hover:text-green-700 text-sm font-medium transition-all">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M7 12h10M11 18h2" /></svg>
-            <span class="hidden sm:inline">A → Z</span>
+            <span class="hidden sm:inline">{{ sortAsc ? 'A → Z' : 'Z → A' }}</span>
         </button>
     </div>
 
@@ -220,18 +220,46 @@
         <!-- Status -->
         <div class="flex items-center gap-2 flex-wrap">
             <span class="text-xs text-slate-400 font-medium">Status:</span>
-            <button ng-click="" class="px-3 py-1 rounded-lg text-xs font-medium border bg-green-600 text-white border-green-600 transition-all">All</button>
-            <button ng-click="" class="px-3 py-1 rounded-lg text-xs font-medium border bg-white text-slate-600 border-slate-200 hover:border-slate-300 transition-all">Active</button>
-            <button ng-click="" class="px-3 py-1 rounded-lg text-xs font-medium border bg-white text-slate-600 border-slate-200 hover:border-slate-300 transition-all">Inactive</button>
+            <button ng-click="setStatus('All')"
+                    ng-class="statusFilter === 'All' ? 'bg-green-600 text-white border-green-600' : 'bg-white text-slate-600 border-slate-200'"
+                    class="px-3 py-1 rounded-lg text-xs font-medium border transition-all">
+                All
+            </button>
+            <button ng-click="setStatus('active')"
+                    ng-class="statusFilter === 'active' ? 'bg-green-600 text-white border-green-600' : 'bg-white text-slate-600 border-slate-200'"
+                    class="px-3 py-1 rounded-lg text-xs font-medium border transition-all">
+                Active
+            </button>
+            <button ng-click="setStatus('inactive')"
+                    ng-class="statusFilter === 'inactive' ? 'bg-green-600 text-white border-green-600' : 'bg-white text-slate-600 border-slate-200'"
+                    class="px-3 py-1 rounded-lg text-xs font-medium border transition-all">
+                Inactive
+            </button>
         </div>
         <div class="hidden sm:block w-px bg-slate-200 self-stretch"></div>
         <!-- Occupancy -->
         <div class="flex items-center gap-2 flex-wrap">
             <span class="text-xs text-slate-400 font-medium">Occupancy:</span>
-            <button ng-click="" class="px-3 py-1 rounded-lg text-xs font-medium border bg-green-600 text-white border-green-600 transition-all">All</button>
-            <button ng-click="" class="px-3 py-1 rounded-lg text-xs font-medium border bg-white text-slate-600 border-slate-200 hover:border-slate-300 transition-all">Vacant</button>
-            <button ng-click="" class="px-3 py-1 rounded-lg text-xs font-medium border bg-white text-slate-600 border-slate-200 hover:border-slate-300 transition-all">Occupied</button>
-            <button ng-click="" class="px-3 py-1 rounded-lg text-xs font-medium border bg-white text-slate-600 border-slate-200 hover:border-slate-300 transition-all">Expiring</button>
+            <button ng-click="setOccupancy('All')"
+                    ng-class="occupancyFilter === 'All' ? 'bg-green-600 text-white border-green-600' : 'bg-white text-slate-600 border-slate-200'"
+                    class="px-3 py-1 rounded-lg text-xs font-medium border transition-all">
+                All
+            </button>
+            <button ng-click="setOccupancy('Vacant')"
+                    ng-class="occupancyFilter === 'Vacant' ? 'bg-green-600 text-white border-green-600' : 'bg-white text-slate-600 border-slate-200'"
+                    class="px-3 py-1 rounded-lg text-xs font-medium border transition-all">
+                Vacant
+            </button>
+            <button ng-click="setOccupancy('Occupied')"
+                    ng-class="occupancyFilter === 'Occupied' ? 'bg-green-600 text-white border-green-600' : 'bg-white text-slate-600 border-slate-200'"
+                    class="px-3 py-1 rounded-lg text-xs font-medium border transition-all">
+                Occupied
+            </button>
+            <button ng-click="setOccupancy('Expiring')"
+                    ng-class="occupancyFilter === 'Expiring' ? 'bg-green-600 text-white border-green-600' : 'bg-white text-slate-600 border-slate-200'"
+                    class="px-3 py-1 rounded-lg text-xs font-medium border transition-all">
+                Expiring
+            </button>
         </div>
     </div>
 
@@ -250,7 +278,7 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-50">
-                    <tr ng-repeat="unit in units" class="hover:bg-slate-50 transition-colors">
+                    <tr ng-repeat="unit in filteredUnits()" class="hover:bg-slate-50 transition-colors">
 
                         <!-- Unit Name + Image -->
                         <td class="px-5 py-3">
@@ -321,7 +349,7 @@
                     </tr>
 
                     <!-- Empty State -->
-                    <tr ng-if="units.length === 0">
+                    <tr ng-if="filteredUnits().length === 0">
                         <td colspan="6" class="text-center py-12 text-slate-400 text-sm">No units found</td>
                     </tr>
 

@@ -1,8 +1,16 @@
-﻿app.controller('controller', function (service, $scope, $timeout) {
+﻿app.controller('controller', function (service, $scope, $timeout, $interval) {
 
-    // Values
+    // Default Values
     $scope.thisMonthhs = new Date();
     $scope.editorModal = false;
+    $scope.loading = false;
+    $scope.step = 'credentials'
+    $scope.toast = { toastShow: false, message: '', type: 'error' };
+
+    $scope.searchQuery = '';
+    $scope.statusFilter = 'All';
+    $scope.occupancyFilter = 'All';
+    $scope.sortAsc = true;
 
     //Unit Values
     $scope.beds = 'Studio';        // Sets default select option
@@ -25,7 +33,77 @@
     $scope.bardata = [[], []];
     $scope.barseries = ['Occupied', 'Vacant'];
 
-    //User Interactions
+    //User Interactionn
+
+    //filter functions
+    $scope.filteredUnits = function () {
+        var list = $scope.units || [];
+
+        //search 
+        if ($scope.searchQuery) {
+            var q = $scope.searchQuery.toLowerCase();
+            list = list.filter(function (u) {
+                return u.unitName.toLowerCase().includes(q) ||
+                    u.floor.toLowerCase().includes(q) ||
+                    u.beds.toLowerCase().includes(q);
+            });
+
+        }
+        // status filter
+        if ($scope.statusFilter !== "All") {
+            list = list.filter(function (u) {
+                return u.status.toLowerCase() === $scope.statusFilter.toLowerCase();
+            });
+        }
+        // occupancy filter
+        if ($scope.occupancyFilter !== "All") {
+            list = list.filter(function (u) {
+                return u.occupancy === $scope.occupancyFilter;
+            });
+        }
+        //sort a-z or z-a
+        list = list.sort(function (a, b) {
+            return $scope.sortAsc
+                ? a.unitName.localeCompare(b.unitName)
+                : b.unitName.localeCompare(a.unitName);
+        });
+        $scope.totalUnits = list.length;
+        return list;
+    }
+    $scope.toggleSort = function () {
+        $scope.sortAsc = !$scope.sortAsc;
+    };
+
+    $scope.setStatus = function (val) {
+        $scope.statusFilter = val;
+    };
+
+    $scope.setOccupancy = function (val) {
+        $scope.occupancyFilter = val;
+    };
+
+
+    //Toast
+    $scope.showToast = function (message, type) {
+        $scope.toast.message = message;
+        $scope.toast.type = type;
+        $scope.toastShow = true;
+
+        // Auto-hide after 3 seconds
+        $timeout(function () {
+            $scope.toastShow = false;
+        }, 8000);
+    };
+    // Cooldown
+    function startCooldown() {
+        $scope.resendCooldown = 30;
+        cooldownTimer = $interval(function () {
+            $scope.resendCooldown--;
+            if ($scope.resendCooldown <= 0) $interval.cancel(cooldownTimer);
+        }, 1000);
+    }
+
+
     // 1. Initialize an empty array to hold the image strings
     $scope.imageUrls = [];
 
@@ -84,29 +162,62 @@
 
     //Auth
     $scope.authFunc = function () {
+        if (!$scope.email || !$scope.password) {
+            $scope.showToast("Please fill out email and password", "error");
+            return;
+        }
+        $scope.loading = true;
         var authData = {
             email: $scope.email,
             password:$scope.password
         }
         service.authService(authData).then(function (response) {
-            alert(response.data.message);
-        });
+            if (response.data.success) {
+                $scope.step = 'verify';
+                $scope.otp = [];
+                startCooldown();
+                $scope.showToast(response.data.message, "success");
+
+            } else {
+                $scope.showToast(response.data.message, "error");
+            }
+        }).finally(function () {
+            $scope.loading = false;
+        })
     }
+    // OTP auto focus next
+    $scope.otpNext = function (index) {
+        var val = $scope.otp[index];
+        if (!/^\d?$/.test(val)) { $scope.otp[index] = ''; return; }
+        if (val && index < 5) {
+            document.getElementById('otp' + (index + 1)).focus();
+        }
+    };
+    $scope.verifyCode = function () {
+        var code = $scope.otp.join('');
+        if (code.length < 6) {
+            $scope.showToast("Please enter a full 6-digit code", "error");
+        }
+        $scope.loading = true;
+        service.verifyCodeService(code).then(function (response) {
+            if (response.data.success) {
+                $scope.showToast("Welcome Back!, Admin", "success");
+                $scope.goTo('Dashboard');
+            } else {
+                $scope.showToast(response.data.message, "error");
+            }
+        }).finally(function () {
+            $scope.loading = false;
+        })
+    }
+    // Resend
+    $scope.resend = function () {
+        if ($scope.resendCooldown > 0) return;
+        $scope.otp = [];
+        $scope.authFunc();
+    };
 
     // Save
-
-    //Toast
-    $scope.toast = { show: false, message: '', type: 'error' };
-    $scope.showToast = function (message, type) {
-        $scope.toast.message = message;
-        $scope.toast.type = type;
-        $scope.toastShow = true;
-
-        // Auto-hide after 3 seconds
-        $timeout(function () {
-            $scope.toastShow = false;
-        }, 3000);
-    };
 
     $scope.saveUnit = function (id) {
         var unitData = {
@@ -131,7 +242,11 @@
         if (!$scope.sqm || $scope.sqm <= 0) { $scope.showToast("Size (sqm) must be greater than 0", "error"); return; }
         if (!$scope.maxOccupants || $scope.maxOccupants < 1 || $scope.maxOccupants > 20) { $scope.showToast("Max Occupants must be between 1 and 20", "error"); return; }
         service.saveUnitService(unitData, $scope.imageUrls, id).then(function (response) {
-            alert(response.data.message);
+            if (response.data.success) {
+                $scope.showToast(response.data.message, "success")
+            } else {
+                $scope.showToast(response.data.message, "error");
+            }
         })
     }
     // Get
@@ -171,10 +286,11 @@
         })
 
     }
-
+    
     $scope.getAllUnits = function () {
         service.GetAllUnitService().then(function (response) {
             $scope.units = response.data.data;
+            $scope.totalUnits = $scope.units.length;
         })
     }
 })
