@@ -13,13 +13,15 @@ namespace WebApplication1.Models.Tables
         public string name { get; set; }
         public string email { get; set; }
         public string phone { get; set; }
-        public DateTime leaseStart { get; set; }
-        public DateTime leaseEnd { get; set; }
+        public System.DateTime leaseStart { get; set; }
+        public System.DateTime leaseEnd { get; set; }
         public string status { get; set; }
         public string address { get; set; }
         public string occupation { get; set; }
         public string passwordHash { get; set; }
         public int occupancyTypeId{ get; set; }
+        public int isTerminated { get; set; }
+        public List<int> deletedCoOccupants { get; set; }
 
     }
 }

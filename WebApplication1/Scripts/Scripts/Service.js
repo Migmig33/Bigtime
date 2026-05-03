@@ -34,6 +34,20 @@
         })
         return response;
     }
+    this.saveTenantService = function (tenantData, coOccupants, idFiles, id) {
+        var response = $http({
+            url: "/System/SaveTenant", 
+            method: "post",
+            data: {
+                tenantData: tenantData,
+                coOccupants: coOccupants,
+                idFiles: idFiles,
+                id: id
+            },
+            headers: { "Content-Type": "application/json" }
+        });
+        return response;
+    };
 
     //Get service
     this.GetDashboardDataService = function () {
@@ -42,5 +56,27 @@
     this.GetAllUnitService = function () {
         return $http.get('/System/GetAllUnit');
     }
-    
+    this.GetAllTenantService = function () {
+        return $http.get('/System/GetAllTenant');
+    }
+
+    //Delete Service
+    this.DeleteUnitService = function (id) {
+        var response = $http({
+            url: "/System/DeleteUnit",
+            method: "post",
+            data: JSON.stringify({ Uid: id }),
+            headers: {"Content-Type": "application/json"}
+        })
+        return response;
+    }
+    this.DeleteTenantService = function (id) {
+        var response = $http({
+            url: "/System/DeleteTenant",
+            method: "post",
+            data: JSON.stringify({ Tid: id }),
+            headers: { "Content-Type": "application/json" }
+        })
+        return response;
+    }
 });

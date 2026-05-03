@@ -25,6 +25,7 @@ namespace WebApplication1.Models.Context
         public virtual DbSet<booking> booking { get; set; }
         public virtual DbSet<amenity> amenity { get; set; }
         public virtual DbSet<admin> admin { get; set; }
+        public virtual DbSet<sms_log> sms_log { get; set; }
 
         protected override void OnModelCreating(DbModelBuilder modelBuilder)
         {

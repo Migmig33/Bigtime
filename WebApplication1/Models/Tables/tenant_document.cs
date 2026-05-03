@@ -8,7 +8,7 @@ namespace WebApplication1.Models.Tables
     public class tenant_document
     {
         public int id { get; set; }
-        public string Tid { get; set; }    
+        public int Tid { get; set; }    
         public string fileName { get; set; }
         public string fileType { get; set; }
         public string fileUrl { get; set; }

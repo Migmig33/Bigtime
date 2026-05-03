@@ -11,7 +11,10 @@
 
     <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
 
+        <!-- Admin Busy Schedule -->
         <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+
+            <!-- Accordion Header -->
             <button ng-click="isBusyOpen = !isBusyOpen" class="w-full flex items-center justify-between px-5 py-4 hover:bg-slate-50 transition-colors focus:outline-none">
                 <div class="flex items-center gap-2.5">
                     <div class="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
@@ -19,27 +22,121 @@
                     </div>
                     <div class="text-left">
                         <p class="text-slate-900 text-sm font-semibold">Admin Busy Schedule</p>
-                        <p class="text-slate-400 text-xs">Manage dates blocked from public booking</p>
+                        <p class="text-slate-400 text-xs">
+                            {{ busyDates.length === 0 ? "No busy dates set — all dates are open for booking" : busyDates.length + " date" + (busyDates.length > 1 ? "s" : "") + " marked as busy" }}
+                        </p>
                     </div>
                 </div>
-                <i data-lucide="chevron-right" class="text-slate-400 w-4 h-4 transition-transform" ng-class="{'rotate-90': isBusyOpen}"></i>
+                <div class="flex items-center gap-2">
+                    <span ng-if="busyDates.length > 0" class="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs rounded-full font-medium">
+                        {{ busyDates.length }} busy
+                    </span>
+                    <i data-lucide="chevron-right" class="text-slate-400 w-4 h-4 transition-transform duration-200" ng-class="{'rotate-90': isBusyOpen}"></i>
+                </div>
             </button>
 
-            <div ng-show="isBusyOpen" class="border-t border-slate-100 p-5">
-                <div class="space-y-2">
-                    <div ng-repeat="date in busyDates" class="flex items-center justify-between px-3 py-2.5 bg-orange-50 border border-orange-100 rounded-xl">
-                        <span class="text-sm text-orange-800 font-medium">{{ date | date:'fullDate' }}</span>
-                        <button class="text-orange-400 hover:text-orange-700 focus:outline-none" ng-click="removeBusyDate(date)">
-                            <i data-lucide="x" class="w-4 h-4"></i>
-                        </button>
-                    </div>
-                    <div ng-if="busyDates.length === 0" class="text-center py-8 text-slate-400 text-sm border-2 border-dashed border-slate-200 rounded-xl">
-                        No busy dates set.
+            <!-- Accordion Body -->
+            <div ng-show="isBusyOpen" class="border-t border-slate-100 transition-all">
+                <div class="p-5">
+                    <div class="flex flex-col gap-5">
+
+                        <!-- 1. Mini Calendar -->
+                        <div class="flex-shrink-0 max-w-[320px] mx-auto">
+                            <p class="text-xs text-slate-500 font-medium mb-3">
+                                Click a date to toggle it as busy. Busy dates block guest bookings.
+                            </p>
+
+                            <!-- Month Nav -->
+                            <div class="flex items-center justify-between mb-3">
+                                <button type="button" ng-click="prevCal()" class="p-1.5 rounded-lg hover:bg-slate-100 transition-colors focus:outline-none">
+                                    <i data-lucide="chevron-left" class="w-4 h-4 text-slate-600"></i>
+                                </button>
+                                <p class="text-sm text-slate-900 font-semibold">
+                                    {{ MONTHS_FULL[calMonth] }} {{ calYear }}
+                                </p>
+                                <button type="button" ng-click="nextCal()" class="p-1.5 rounded-lg hover:bg-slate-100 transition-colors focus:outline-none">
+                                    <i data-lucide="chevron-right" class="w-4 h-4 text-slate-600"></i>
+                                </button>
+                            </div>
+
+                            <!-- Day Headers -->
+                            <div class="grid grid-cols-7 gap-0.5 mb-1">
+                                <div ng-repeat="d in DAYS" class="text-center text-xs text-slate-400 py-1">{{ d }}</div>
+                            </div>
+
+                            <!-- Day Cells -->
+                            <div class="grid grid-cols-7 gap-0.5">
+                                <!-- Empty slots for the first day of the month offset -->
+                                <div ng-repeat="empty in emptySlots track by $index"></div>
+
+                                <!-- Actual Days -->
+                                <button type="button" ng-repeat="day in monthDays"
+                                        ng-click="toggleBusyDate(day)"
+                                        ng-disabled="day.isPast"
+                                        title="{{ isBusy(day.dateStr) ? 'Click to unmark as busy' : 'Click to mark as busy' }}"
+                                        class="relative aspect-square rounded-lg text-xs font-medium transition-all focus:outline-none focus:ring-2 focus:ring-orange-400"
+                                        ng-class="{
+                                    'text-slate-200 cursor-not-allowed': day.isPast,
+                                    'cursor-pointer': !day.isPast,
+                                    'bg-orange-500 text-white shadow-sm shadow-orange-200 hover:bg-orange-600': isBusy(day.dateStr) && !day.isPast,
+                                    'bg-blue-50 text-blue-600 border border-blue-200 hover:bg-orange-50 hover:border-orange-200 hover:text-orange-600': !day.isPast && day.isToday && !isBusy(day.dateStr),
+                                    'hover:bg-orange-50 hover:text-orange-600 text-slate-700': !day.isPast && !isBusy(day.dateStr) && !day.isToday
+                                }">
+                                    {{ day.num }}
+                                    <span ng-if="isBusy(day.dateStr)" class="absolute top-0.5 right-0.5 w-1.5 h-1.5 bg-white rounded-full opacity-80"></span>
+                                </button>
+                            </div>
+
+                            <!-- Legend -->
+                            <div class="mt-3 flex items-center gap-4 text-xs text-slate-500">
+                                <span class="flex items-center gap-1.5">
+                                    <span class="w-3 h-3 rounded bg-orange-500 flex-shrink-0"></span> Busy (blocked)
+                                </span>
+                                <span class="flex items-center gap-1.5">
+                                    <span class="w-3 h-3 rounded bg-blue-50 border border-blue-200 flex-shrink-0"></span> Today
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- 2. Busy Dates List -->
+                        <div>
+                            <div class="flex items-center justify-between mb-3">
+                                <p class="text-xs text-slate-500 font-medium uppercase tracking-wide">Marked Busy Dates</p>
+                                <button type="button" ng-if="busyDates.length > 0" ng-click="clearAllBusy()" class="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 transition-colors focus:outline-none">
+                                    <i data-lucide="trash-2" class="w-3 h-3"></i> Clear all
+                                </button>
+                            </div>
+
+                            <!-- Empty State -->
+                            <div ng-if="busyDates.length === 0" class="flex flex-col items-center justify-center py-8 text-center border-2 border-dashed border-slate-200 rounded-xl">
+                                <i data-lucide="ban" class="w-6 h-6 text-slate-300 mb-2"></i>
+                                <p class="text-slate-400 text-sm">No busy dates</p>
+                                <p class="text-slate-300 text-xs mt-0.5">Click dates on the calendar to block them</p>
+                            </div>
+
+                            <!-- Populated List -->
+                            <div ng-if="busyDates.length > 0" class="space-y-2 max-h-48 overflow-y-auto pr-1">
+                                <div ng-repeat="dateStr in busyDates track by $index" class="flex items-center justify-between px-3 py-2.5 bg-orange-50 border border-orange-100 rounded-xl animate-fade-in">
+                                    <div class="flex items-center gap-2">
+                                        <!-- Using raw SVG here so AngularJS dynamically rendered lists don't break Lucide -->
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-orange-500 flex-shrink-0"><path d="M4.2 4.2l15.6 15.6" /><path d="M21 15.5V6a2 2 0 0 0-2-2H9.5" /><path d="M16 2v4" /><path d="M3 10h7" /><path d="M21 10h-5.5" /><path d="M8 2v2" /><path d="M3 6v14c0 1.1.9 2 2 2h14c.3 0 .6-.1.8-.2" /></svg>
+                                        <span class="text-sm text-orange-800 font-medium">{{ formatDateLabel(dateStr) }}</span>
+                                    </div>
+                                    <button type="button" ng-click="removeBusyDate(dateStr)" class="p-1 rounded-lg hover:bg-orange-200 text-orange-400 hover:text-orange-700 transition-colors focus:outline-none">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18" /><path d="M6 6l12 12" /></svg>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="mt-4 p-3 bg-amber-50 border border-amber-100 rounded-xl text-xs text-amber-700">
+                                ⚠️ Busy dates are <strong>immediately blocked</strong> on the public booking calendar. Guests will see these dates grayed out and cannot select them.
+                            </div>
+                        </div>
+
                     </div>
                 </div>
             </div>
         </div>
-
         <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
             <button ng-click="isUpcomingOpen = !isUpcomingOpen" class="w-full flex items-center justify-between px-5 py-4 hover:bg-slate-50 transition-colors focus:outline-none">
                 <div class="flex items-center gap-2.5">

@@ -121,6 +121,164 @@ namespace WebApplication1.Controllers
                 return Json(new {success = false, message = ErrorHandling(ex)}, JsonRequestBehavior.AllowGet);
             }
         }
+        [HttpPost]
+        public JsonResult SaveTenant(tenant tenantData, List<co_occupant> coOccupants, List<IdFileDto> idFiles, int? id)
+        {
+            System.Diagnostics.Debug.WriteLine("Saving Tenant: " + tenantData.name);
+            try
+            {
+                using (var connect = new DB_Context())
+                {
+                    // Use the passed 'id' to check if we are updating or inserting
+                    var existingTenant = connect.tenant.Where(x => x.Tid == id).FirstOrDefault();
+                    if (existingTenant == null)
+                    {
+                        // --- 1. INSERT NEW TENANT ---
+
+                        // Auto-generate a tenant number if it's empty
+                        string newTenantNumber = tenantData.tenantNumber;
+                        if (string.IsNullOrEmpty(newTenantNumber))
+                        {
+                            newTenantNumber = "T-" + DateTime.Now.ToString("yyyyMMddHHmm");
+                        }
+
+                        // MAP TO A FRESH DATABASE ENTITY
+                        // This allows us to intercept the string dates and turn them into SQL DateTimes
+                        var newDbTenant = new tenant
+                        {
+                            tenantNumber = newTenantNumber,
+                            name = tenantData.name,
+                            email = tenantData.email,
+                            phone = tenantData.phone,
+                            address = tenantData.address,
+                            occupation = tenantData.occupation,
+                            occupancyTypeId = tenantData.occupancyTypeId,
+                            passwordHash = tenantData.passwordHash,
+                            unitId = tenantData.unitId,
+                            status = "Active",
+                            isTerminated = 0,
+
+                            leaseStart = tenantData.leaseStart,
+                            leaseEnd = tenantData.leaseEnd
+                        };
+
+                        connect.tenant.Add(newDbTenant);
+                        connect.SaveChanges(); // Saves to DB and generates the new Tid inside newDbTenant
+
+                        // --- 2. UPDATE UNIT STATUS ---
+                        if (newDbTenant.unitId > 0)
+                        {
+                            var assignedUnit = connect.unit.Where(u => u.Uid == newDbTenant.unitId).FirstOrDefault();
+                            if (assignedUnit != null)
+                            {
+                                assignedUnit.status = "active";
+                                connect.SaveChanges();
+                            }
+                        }
+
+                        // --- 3. SAVE CO-OCCUPANTS ---
+                        if (newDbTenant.occupancyTypeId == 2 && coOccupants != null && coOccupants.Any())
+                        {
+                            foreach (var occ in coOccupants)
+                            {
+                                // IMPORTANT: Use newDbTenant.Tid so it links to the newly created tenant
+                                occ.Tid = newDbTenant.Tid;
+                                connect.co_occupant.Add(occ);
+                            }
+                            connect.SaveChanges();
+                        }
+
+                        // --- 4. SAVE ID DOCUMENTS ---
+                        if (idFiles != null && idFiles.Any())
+                        {
+                            foreach (var file in idFiles)
+                            {
+                                var doc = new tenant_document
+                                {
+                                    // IMPORTANT: Use newDbTenant.Tid here too!
+                                    Tid = newDbTenant.Tid,
+                                    fileName = file.name,
+                                    fileUrl = file.url,
+                                    fileType = "ID Document"
+                                };
+                                connect.tenant_document.Add(doc);
+                            }
+                            connect.SaveChanges();
+                        }
+                    }
+                    else
+                    {
+                        // --- 5. UPDATE EXISTING TENANT ---
+                        existingTenant.unitId = tenantData.unitId;
+                        existingTenant.name = tenantData.name;
+                        existingTenant.email = tenantData.email;
+                        existingTenant.phone = tenantData.phone;
+                        existingTenant.leaseStart = tenantData.leaseStart;
+                        existingTenant.leaseEnd = tenantData.leaseEnd;
+                        existingTenant.address = tenantData.address;
+                        existingTenant.occupation = tenantData.occupation;
+                        existingTenant.occupancyTypeId = tenantData.occupancyTypeId;
+
+                        if (!string.IsNullOrEmpty(tenantData.passwordHash))
+                        {
+                            existingTenant.passwordHash = tenantData.passwordHash;
+                        }
+
+                        // --- 6. PROCESS CO-OCCUPANT DELETIONS (The Trash Can) ---
+                        // If the frontend sent an array of IDs to delete, wipe them out
+                        if (tenantData.deletedCoOccupants != null && tenantData.deletedCoOccupants.Any())
+                        {
+                            var recordsToDelete = connect.co_occupant
+                                .Where(c => tenantData.deletedCoOccupants.Contains(c.id))
+                                .ToList();
+
+                            connect.co_occupant.RemoveRange(recordsToDelete);
+                        }
+
+                        // --- 7. PROCESS CO-OCCUPANT ADDITIONS & UPDATES ---
+                        if (tenantData.occupancyTypeId == 2 && coOccupants != null)
+                        {
+                            foreach (var occ in coOccupants)
+                            {
+                                if (occ.id == 0) // It's a brand new row added during the edit
+                                {
+                                    occ.Tid = existingTenant.Tid;
+                                    connect.co_occupant.Add(occ);
+                                }
+                                else // It already exists, just update the text fields
+                                {
+                                    var existingOcc = connect.co_occupant.Where(c => c.id == occ.id).FirstOrDefault();
+                                    if (existingOcc != null)
+                                    {
+                                        existingOcc.name = occ.name;
+                                        existingOcc.phone = occ.phone;
+                                        existingOcc.address = occ.address;
+                                    }
+                                }
+                            }
+                        }
+                        // Safety Catch: If they changed from "With Others" back to "Solo", delete all of their co-occupants
+                        else if (tenantData.occupancyTypeId == 1)
+                        {
+                            var allExistingCoOccupants = connect.co_occupant.Where(c => c.Tid == existingTenant.Tid).ToList();
+                            if (allExistingCoOccupants.Any())
+                            {
+                                connect.co_occupant.RemoveRange(allExistingCoOccupants);
+                            }
+                        }
+
+                        // Save all changes (Tenant updates, Co-occupant deletes, additions, and edits) at once!
+                        connect.SaveChanges();
+                    }
+                }
+                return Json(new { success = true, message = "Tenant Saved Successfully" }, JsonRequestBehavior.AllowGet);
+            }
+            catch (Exception ex)
+            {
+                // Replace ErrorHandling(ex) with however you globally handle exceptions
+                return Json(new { success = false, message = ex.Message }, JsonRequestBehavior.AllowGet);
+            }
+        }
         // Get API
         public JsonResult GetDashboardData()
         {
@@ -277,7 +435,7 @@ namespace WebApplication1.Controllers
                         var image = unitImages
                            .Where(i => i.Uid == u.Uid)
                            .OrderBy(i => i.displayOrder)
-                           .FirstOrDefault();
+                           .ToList();
 
                         return new
                         {
@@ -294,7 +452,13 @@ namespace WebApplication1.Controllers
                             u.address,
                             u.maxOccupants,
                             occupancy,
-                            imageUrl = image != null ? image.imageUrl : null
+                            images = unitImages
+                                .Where(i => i.Uid == u.Uid)
+                                .OrderBy(i => i.displayOrder)
+                                .Select(i => new {
+                                    i.imageUrl
+                                })
+                                .ToList()
                         };
                     }).ToList();
                    
@@ -305,6 +469,169 @@ namespace WebApplication1.Controllers
             catch (Exception ex)
             {
                 return Json(new { success = false, message = ErrorHandling(ex) }, JsonRequestBehavior.AllowGet);
+            }
+        }
+        public JsonResult GetAllTenant()
+        {
+            try
+            {
+                using (var connect = new DB_Context())
+                {
+                    var today = DateTime.Today;
+                    var expiringThreshold = today.AddDays(45);
+
+                    var tenants = connect.tenant.ToList();
+                    var units = connect.unit.ToList();
+                    var coOccupants = connect.co_occupant.ToList();
+                    var tenantDocuments = connect.tenant_document.ToList();
+
+                    // 1. The RAW query (Runs in SQL Server)
+                    var raw = (from t in tenants
+                               // Left join the unit to get the unit name safely
+                               join u in units on t.unitId equals u.Uid into unitGroup
+                               from u in unitGroup.DefaultIfEmpty()
+                               select new
+                               {
+                                   t.Tid,
+                                   t.tenantNumber,
+                                   t.name,
+                                   t.email,
+                                   t.phone,
+                                   t.address,
+                                   t.occupation,
+                                   t.status,
+                                   t.leaseStart,
+                                   t.leaseEnd,
+                                   t.isTerminated,
+                                   t.unitId,
+                                   t.occupancyTypeId,
+                                   t.passwordHash,
+                                   unitName = u != null ? u.unitName : null,
+                                   maxOccupants = u != null ? u.maxOccupants : 0,
+                                   // Map your co-occupant model exactly
+                                   coOccupantsList = coOccupants.Where(c => c.Tid == t.Tid).Select(c => new {
+                                       c.id,
+                                       c.Tid,
+                                       c.name,
+                                       c.phone,
+                                       c.address
+                                   }).ToList(),
+
+                               
+                                   additionalOccupantsCount = coOccupants.Count(c => c.Tid == t.Tid),
+                                   idFilesCount = tenantDocuments.Count(d => d.Tid == t.Tid)
+                               }).ToList();
+
+                    var data = raw.Select(t =>
+                    {
+                        // Occupancy logic
+                        var occupancyType = t.additionalOccupantsCount > 0 ? "with_others" : "solo";
+
+                        // Days left logic
+                        var daysLeft = (int?)(t.leaseEnd.Date - today).TotalDays;
+
+                        // Live status logic
+                        string liveStatus;
+                        if (t.isTerminated == 1)
+                            liveStatus = "Terminated";
+                        else if (t.leaseEnd < today)
+                            liveStatus = "Expired";
+                        else if (t.leaseEnd <= expiringThreshold)
+                            liveStatus = "Expiring";
+                        else
+                            liveStatus = "Active";
+
+                        // Contract type logic
+                        var leaseDurationMonths = ((t.leaseEnd.Year - t.leaseStart.Year) * 12) + t.leaseEnd.Month - t.leaseStart.Month;
+                        string contractType;
+                        if (leaseDurationMonths <= 3)
+                            contractType = "Short-term";
+                        else if (leaseDurationMonths <= 6)
+                            contractType = "Mid-term";
+                        else
+                            contractType = "Long-term";
+
+                        return new
+                        {
+                            Tid = t.Tid,
+                            tenantNumber = t.tenantNumber,
+                            name = t.name,
+                            email = t.email,
+                            phone = t.phone,
+                            address = t.address,
+                            occupation = t.occupation,
+                            status = t.status,
+                            coOccupants = t.coOccupantsList,
+                            maxOccupants = t.maxOccupants,
+
+                            // FORMAT DATES HERE: This fixes the Angular [ngModel:datefmt] error!
+                            leaseStart = t.leaseStart.ToString("yyyy-MM-dd"),
+                            leaseEnd = t.leaseEnd.ToString("yyyy-MM-dd"),
+
+                            isTerminated = t.isTerminated == 1,
+                            unit = t.unitName,
+                            unitId = t.unitId,
+                            passwordHash = t.passwordHash,
+                            occupancyType = occupancyType,
+                            occupancyTypeId = t.occupancyTypeId,
+                            additionalOccupantsCount = t.additionalOccupantsCount,
+                            daysLeft = daysLeft,
+                            liveStatus = liveStatus,
+                            contractType = contractType,
+                            latestPaymentStatus = "None", // extend when payment table is available
+                            idFilesCount = t.idFilesCount
+                        };
+                    }).ToList();
+
+                    return Json(new { success = true, data = data }, JsonRequestBehavior.AllowGet);
+                }
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ErrorHandling(ex) }, JsonRequestBehavior.AllowGet);
+            }
+        }
+
+        //Delete
+        public JsonResult DeleteUnit(unit data)
+        {
+            System.Diagnostics.Debug.WriteLine("Data is " + data.Uid);
+            try
+            {
+                using(var connect = new DB_Context())
+                {
+                    var deleteUnit = connect.unit.Where(u => u.Uid == data.Uid).FirstOrDefault();
+                    var deleteUnitImage = connect.unit_image.Where(u => u.Uid == deleteUnit.Uid).ToList();
+                    connect.unit.Remove(deleteUnit);
+                    connect.unit_image.RemoveRange(deleteUnitImage);
+                    connect.SaveChanges();
+                }
+                return Json(new { success = true, message = "Unit Successfully Deleted" });
+
+            }catch(Exception ex)
+            {
+                return Json(new { success = false, message = ErrorHandling(ex) });   
+            }
+        }
+        public JsonResult DeleteTenant(tenant data)
+        {
+            System.Diagnostics.Debug.WriteLine("Data is " + data.Tid);
+            try
+            {
+                using (var connect = new DB_Context())
+                {
+                    var deleteTenant = connect.tenant.Where(u => u.Tid == data.Tid).FirstOrDefault();
+                    var deleteTenantDocu = connect.tenant_document.Where(u => u.Tid == deleteTenant.Tid).ToList();
+                    connect.tenant.Remove(deleteTenant);
+                    connect.tenant_document.RemoveRange(deleteTenantDocu);
+                    connect.SaveChanges();
+                }
+                return Json(new { success = true, message = "Tenant Successfully Deleted" });
+
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ErrorHandling(ex) });
             }
         }
         public string ErrorHandling(Exception ex)
