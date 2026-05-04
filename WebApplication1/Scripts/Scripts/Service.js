@@ -20,6 +20,19 @@
         })
         return response;
     }
+    //AI SERVice
+    this.sendMessageAIService = function (mes, convo) {
+        var response = $http({
+            url: "/AI/Chat",
+            method: "post",
+            data: {
+                message: mes,
+                conversationHistory: convo
+            },
+            headers: {"Content-Type": "application/json"}
+        })
+        return response;
+    }
     //Save service
     this.saveUnitService = function(data, images, id){ 
         var response = $http({
@@ -98,6 +111,14 @@
         return response;
 
     };
+    this.MarkPaymentsPaidService = function (payload) {
+        return $http({
+            method: 'post',
+            url: '/System/MarkPaymentsPaid',
+            data: payload,
+            headers: { "Content-Type": "application/json" }
+        });
+    }
     //Get service
     this.GetDashboardDataService = function () {
         return $http.get('/System/GetDashboardData');
@@ -113,6 +134,9 @@
     }
     this.GetAllMaintenanceService = function () {
         return $http.get('/System/GetAllMaintenance')
+    }
+    this.getAllPaymentService = function () {
+        return $http.get('/System/GetAllPayment')
     }
    
 

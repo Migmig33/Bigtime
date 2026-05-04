@@ -1,4 +1,81 @@
 ﻿app.controller('controller', function (service, $scope, $timeout, $interval) {
+    //AII
+    // ==========================================
+    // GREENBOT CHAT LOGIC
+    // ==========================================
+
+    $scope.initChat = function () {
+        $scope.chatOpen = false;
+        $scope.unread = 0;
+        $scope.adminSuggestions = [
+            "How many units are vacant?",
+            "Who has overdue payments?",
+            "Show pending bookings",
+            "List expiring leases"
+        ];
+
+        // Setup the initial welcome message
+        $scope.clearChat();
+    };
+
+    $scope.clearChat = function () {
+        $scope.chatMessages = [
+            {
+                id: "init",
+                sender: "bot",
+                text: "Hi Admin! I'm GreenBot. Ask me about your units, tenants, payments, or bookings.",
+                time: new Date()
+            }
+        ];
+    };
+
+    $scope.initChat();
+
+    $scope.chatHistory = [];
+    $scope.userMessage = "";
+
+    $scope.sendMessage = function () {
+        // Push user message immediately to UI
+        $scope.chatMessages.push({
+            sender: "user",
+            text: $scope.userMessage,
+            time: new Date()
+        });
+
+        var mes = $scope.userMessage;
+        var convo = JSON.stringify($scope.chatHistory);
+
+        $scope.userMessage = "";  // clear input early
+
+        service.sendMessageAIService(mes, convo)
+            .then(function (response) {
+                if (response.data.success) {
+                    // Push bot reply to UI
+                    $scope.chatMessages.push({
+                        sender: "bot",
+                        text: response.data.reply,
+                        time: new Date()
+                    });
+                    $scope.chatHistory = response.data.history;  // update history
+                } else {
+                    $scope.chatMessages.push({
+                        sender: "bot",
+                        text: response.data.message,
+                        time: new Date()
+                    });
+                }
+            })
+            .catch(function () {
+                $scope.chatMessages.push({
+                    sender: "bot",
+                    text: "Something went wrong. Please try again.",
+                    time: new Date()
+                });
+            });
+    };
+       
+    
+  
 
     // ==========================================
     // 1. INITIALIZATION & DEFAULT STATE
@@ -985,19 +1062,18 @@
     $scope.addOpen = false;
     $scope.resolveConfirmReq = null;
 
-    // Schedule Form
-    $scope.schedulingReq = null;
+    // --- SCHEDULE MODAL STATE ---
+    $scope.scheduleOpen = false;
+    $scope.schedulingReq = null; // Holds the request we are currently editing
     $scope.schedDate = null;
     $scope.schedTime = null;
+    $scope.isSubmittingSchedule = false;
+
+    // Time Options (You already had this, just ensuring it's here)
     $scope.timeOptions = [
         "08:00 AM", "09:00 AM", "10:00 AM", "11:00 AM",
         "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM"
     ];
-
-    // New Request Form
-    $scope.isSubmitting = false;
-
-
     // 1. Open Modal & Reset Form Fields
     $scope.openAddModal = function () {
         // Reset individual variables to default values
@@ -1020,8 +1096,35 @@
     $scope.closeAddModal = function () {
         $scope.addOpen = false;
     };
+    $scope.openResolveModal = function (req) {
+        $scope.resolveConfirmReq = req;
+    };
 
-    $scope.submitAddRequest = function (id) {
+    $scope.closeResolveModal = function () {
+        $scope.resolveConfirmReq = null;
+    };
+    $scope.markAsResolved = function (id) {
+        $scope.isResolving = true;
+        var payload = {
+            id: id, // If editing
+            status: "Resolved"
+        };
+
+        service.SaveMaintenanceRequestService(payload, id).then(function (response) {
+            if (response.data.success) {
+
+                $scope.isResolving = false;
+                $scope.showToast("Request Resolved Successfully", "success");
+
+            } else {
+                $scope.isResolving = false;
+                $scope.showToast("Failed to Resolved, Please Try Again", "error");
+            }
+        }).finally(function () {
+             $scope.resolveConfirmReq = null;
+        })
+    }
+    $scope.submitAddRequest = function () {
         // Basic Validation directly on scope variables
         if (!$scope.unitId || !$scope.description) {
             alert("Please select a unit and provide a description.");
@@ -1067,14 +1170,102 @@
                 // Close modal and stop loading
                 $scope.isSubmitting = false;
                 $scope.closeAddModal();
+                $scope.showToast(response.data.message, "success");
 
             } else {
                 $scope.isSubmitting = false;
-                alert("Failed to add request: " + response.data.message);
+                $scope.showToast("Failed to add request: " + response.data.message, "error");
             }
         }, function (error) {
             $scope.isSubmitting = false;
-            alert("Server error occurred while adding the request.");
+            $scope.showToast("Server error occurred while adding the request.", "error");
+        }).finally(function () {
+            $scope.closeResolveModal();
+        })
+    };
+    // Open Modal (Works for both Schedule and Reschedule)
+    $scope.opnSchedModal = function (req) {
+        $scope.schedulingReq = angular.copy(req); // Copy so we don't edit the UI list directly yet
+
+        // If it already has a date, pre-fill it (for rescheduling)
+        if (req.scheduledDate) {
+            // Convert string "MMM dd, yyyy" to standard HTML5 Date format "YYYY-MM-DD" if needed, 
+            // or just rely on the user picking a new date.
+            $scope.schedDate = new Date(req.scheduledDate);
+        } else {
+            $scope.schedDate = null;
+        }
+
+        $scope.schedTime = req.scheduledTime || null;
+        $scope.isSubmittingSchedule = false;
+        $scope.scheduleOpen = true;
+    };
+
+    $scope.closeScheduleModal = function () {
+        $scope.scheduleOpen = false;
+        $scope.schedulingReq = null;
+    };
+
+    // Submit the Schedule Update
+    // Submit the Schedule Update
+    $scope.submitSchedule = function () {
+        if (!$scope.schedDate || !$scope.schedTime) {
+            alert("Please select both a date and a time.");
+            return;
+        }
+
+        $scope.isSubmittingSchedule = true;
+
+        // 1. Ensure schedDate is a standard Date object
+        var dateObj = new Date($scope.schedDate);
+
+        // 2. Format the date part to "MM/DD/YYYY"
+        var dateString = dateObj.toLocaleDateString('en-US', {
+            month: '2-digit',
+            day: '2-digit',
+            year: 'numeric'
+        });
+
+        // 3. Combine them! Result: "05/04/2026 08:00 AM"
+        var combinedDateTimeStr = dateString + " " + $scope.schedTime;
+
+        // Prepare payload
+        var payload = {
+            id: $scope.schedulingReq.id,
+            Uid: $scope.schedulingReq.Uid,
+            Tid: $scope.schedulingReq.Tid,
+            category: $scope.schedulingReq.category,
+            priority: $scope.schedulingReq.priority,
+            description: $scope.schedulingReq.description,
+
+            // PASSING AS ONE SINGLE FIELD
+            // Note: You called this resolvedDate, but since this is the Schedule modal, 
+            // you might want to name it scheduledDate depending on your database!
+            resolvedDate: combinedDateTimeStr,
+
+            status: "In Progress" // Once scheduled, it moves to "In Progress"
+        };
+
+        service.SaveMaintenanceRequestService(payload).then(function (response) {
+            if (response.data.success) {
+
+                // Instantly update the item in the local UI array
+                var index = $scope.maintenanceRequests.findIndex(function (r) { return r.id === $scope.schedulingReq.id; });
+                if (index !== -1) {
+                    // Update UI visually
+                    $scope.maintenanceRequests[index].scheduledDate = dateString;
+                    $scope.maintenanceRequests[index].scheduledTime = $scope.schedTime;
+                    $scope.maintenanceRequests[index].status = "In Progress";
+                }
+
+                $scope.closeScheduleModal();
+            } else {
+                alert("Error: " + response.data.message);
+            }
+            $scope.isSubmittingSchedule = false;
+        }, function (error) {
+            alert("Server error.");
+            $scope.isSubmittingSchedule = false;
         });
     };
     // --- MAIN GET FUNCTION ---
@@ -1150,8 +1341,180 @@
         $scope.maintenanceStatusFilter = status;
     };
 
+    // ==============================================
+    // 11. PAYMENTS
+    // ==============================================
+    // --- STATE VARIABLES ---
+    $scope.payments = [];
+    $scope.paymentFilter = 'All';
+    $scope.paymentSearch = '';
+
+    // Summary Totals
+    $scope.totalPaid = 0;
+    $scope.totalOverdue = 0;
+
+    $scope.totalUnpaid = 0;
+
+    $scope.openMarkPaidModal = function (payment) {
+        // Set the target to the payment object clicked
+        $scope.markPaidTarget = payment;
+
+        // Reset any previous selections
+        $scope.paidUntil = null;
+        $scope.previewMonths = [];
+
+        // Generate month options (e.g., next 12 months)
+        $scope.generateMonthOptions();
+    };
+    $scope.selectPaidUntil = function (opt) {
+        // Clicking the already-selected month cancels/deselects it
+        if ($scope.paidUntil === opt.key) {
+            $scope.paidUntil = null;
+            $scope.previewMonths = [];
+        } else {
+            $scope.paidUntil = opt.key;
+            $scope.updatePreviewMonths();
+        }
+    };
+
+    $scope.isInRange = function (opt) {
+        if (!$scope.paidUntil) return false;
+
+        const optIdx = $scope.monthOptions.findIndex(m => m.key === opt.key);
+        const endIdx = $scope.monthOptions.findIndex(m => m.key === $scope.paidUntil);
+
+        // Highlight everything from the first option (start month) up to selected end
+        return optIdx >= 0 && optIdx <= endIdx;
+    };
+
+    $scope.updatePreviewMonths = function () {
+        if (!$scope.paidUntil) { $scope.previewMonths = []; return; }
+
+        const endIdx = $scope.monthOptions.findIndex(m => m.key === $scope.paidUntil);
+        $scope.previewMonths = $scope.monthOptions
+            .slice(0, endIdx + 1)
+            .map(m => m.shortMonth + ' ' + m.year);
+    };
+
+    $scope.generateMonthOptions = function () {
+        // Example logic to generate the next few months
+        const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        const options = [];
+        let date = new Date();
+
+        for (let i = 0; i < 12; i++) {
+            let futureDate = new Date(date.getFullYear(), date.getMonth() + i, 1);
+            options.push({
+                shortMonth: months[futureDate.getMonth()],
+                year: futureDate.getFullYear(),
+                key: futureDate.getMonth() + '-' + futureDate.getFullYear()
+            });
+        }
+        $scope.monthOptions = options;
+    };
+    $scope.confirmMarkPaid = function () {
+        if (!$scope.paidUntil || !$scope.markPaidTarget) return;
+
+        const endIdx = $scope.monthOptions.findIndex(m => m.key === $scope.paidUntil);
+        const months = $scope.monthOptions.slice(0, endIdx + 1).map(m => ({
+            Month: parseInt(m.key.split('-')[0]) + 1,
+            Year: parseInt(m.key.split('-')[1])
+        }));
+
+        const payload = {
+            Tid: $scope.markPaidTarget.Tid,
+            Uid: $scope.markPaidTarget.Uid,
+            amount: $scope.markPaidTarget.amount,
+            months: months
+        };
+
+        service.MarkPaymentsPaidService(payload)
+            .then(function (res) {
+                if (res.data.success) {
+                    alert('Payments updated successfully!');
+                    $scope.markPaidTarget = null;
+                    $scope.paidUntil = null;
+                    $scope.previewMonths = [];
+                    $scope.loadPayments();
+                } else {
+                    alert('Error: ' + res.data.message);
+                }
+            });
+    };
+    $scope.getAllPayments = function () {
+        // Calling your AngularJS service instead of $http directly
+        service.getAllPaymentService().then(function (response) {
+            if (response.data.success) {
+
+                // Assign the data to your scope
+                $scope.payments = response.data.data;
+
+                // Calculate the summary cards at the top of the page
+                $scope.calculateTotals();
+
+                // Re-initialize Lucide icons
+                setTimeout(function () {
+                    if (window.lucide) { window.lucide.createIcons(); }
+                }, 50);
+
+            } else {
+                alert("Error loading payments: " + response.data.message);
+            }
+        }, function (error) {
+            alert("Server error occurred while fetching payments.");
+        });
+    };
+
+    // --- 2. CALCULATIONS & HELPERS ---
+
+    // Calculates the total monetary value for the summary cards
+    $scope.calculateTotals = function () {
+        $scope.totalPaid = 0;
+        $scope.totalOverdue = 0;
+        $scope.totalUnpaid = 0;
+
+        $scope.payments.forEach(function (p) {
+            if (p.status === 'Paid') $scope.totalPaid += p.amount;
+            else if (p.status === 'Overdue') $scope.totalOverdue += p.amount;
+            else if (p.status === 'Unpaid') $scope.totalUnpaid += p.amount;
+        });
+    };
+
+    // Counts the number of payments for a specific status
+    $scope.countByPaymentStatus = function (status) {
+        if (!$scope.payments) return 0;
+        return $scope.payments.filter(function (p) { return p.status === status; }).length;
+    };
+
+    // --- 3. FILTERING & SEARCHING ---
+
+    // Changes the active tab
+    $scope.setStatusFilter = function (status) {
+        $scope.paymentFilter = status;
+    };
+
+    // Returns the filtered list for the HTML table
+    $scope.filteredPayments = function () {
+        if (!$scope.payments) return [];
+
+        return $scope.payments.filter(function (p) {
+            // Tab Filter
+            var matchStatus = ($scope.paymentFilter === 'All' || p.status === $scope.paymentFilter);
+
+            // Text Search Filter
+            var matchSearch = true;
+            if ($scope.paymentSearch && $scope.paymentSearch.trim() !== '') {
+                var term = $scope.paymentSearch.toLowerCase().trim();
+                matchSearch = (p.tenantName && p.tenantName.toLowerCase().includes(term)) ||
+                    (p.unitName && p.unitName.toLowerCase().includes(term)) ||
+                    (p.month && p.month.toLowerCase().includes(term));
+            }
+
+            return matchStatus && matchSearch;
+        });
+    };
     // ==========================================
-    // 11. FILE UPLOADS (Images & IDs)
+    // 12. FILE UPLOADS (Images & IDs)
     // ==========================================
     $scope.handleImageUpload = function (files) {
         $scope.$apply(function () {

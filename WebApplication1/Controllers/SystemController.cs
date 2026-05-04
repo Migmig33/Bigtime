@@ -135,16 +135,12 @@ namespace WebApplication1.Controllers
                     if (existingTenant == null)
                     {
                         // --- 1. INSERT NEW TENANT ---
-
-                        // Auto-generate a tenant number if it's empty
                         string newTenantNumber = tenantData.tenantNumber;
                         if (string.IsNullOrEmpty(newTenantNumber))
                         {
                             newTenantNumber = "T-" + DateTime.Now.ToString("yyyyMMddHHmm");
                         }
 
-                        // MAP TO A FRESH DATABASE ENTITY
-                        // This allows us to intercept the string dates and turn them into SQL DateTimes
                         var newDbTenant = new tenant
                         {
                             tenantNumber = newTenantNumber,
@@ -158,21 +154,35 @@ namespace WebApplication1.Controllers
                             unitId = tenantData.unitId,
                             status = "Active",
                             isTerminated = 0,
-
                             leaseStart = tenantData.leaseStart,
                             leaseEnd = tenantData.leaseEnd
                         };
 
                         connect.tenant.Add(newDbTenant);
-                        connect.SaveChanges(); // Saves to DB and generates the new Tid inside newDbTenant
+                        connect.SaveChanges(); // Generates the new Tid inside newDbTenant
 
-                        // --- 2. UPDATE UNIT STATUS ---
+                        // --- 2. UPDATE UNIT STATUS & CREATE INITIAL PAYMENT ---
                         if (newDbTenant.unitId > 0)
                         {
                             var assignedUnit = connect.unit.Where(u => u.Uid == newDbTenant.unitId).FirstOrDefault();
                             if (assignedUnit != null)
                             {
+                                // Update unit status
                                 assignedUnit.status = "active";
+
+                                // Create the automatic first payment
+                                var initialPayment = new payment
+                                {
+                                    Tid = newDbTenant.Tid,
+                                    Uid = assignedUnit.Uid,
+                                    // Replace '.price' below if your unit table uses a different column name (e.g., .rentAmount)
+                                    amount = assignedUnit.price,
+                                    dueDate = DateTime.Now,
+                                    paidDate = DateTime.Now, // Setting this automatically makes the computed status "Paid"
+                                    billingPeriod = DateTime.Now.ToString("MMMM yyyy") // Automatically sets to current month (e.g., "May 2026")
+                                };
+
+                                connect.payment.Add(initialPayment);
                                 connect.SaveChanges();
                             }
                         }
@@ -182,7 +192,6 @@ namespace WebApplication1.Controllers
                         {
                             foreach (var occ in coOccupants)
                             {
-                                // IMPORTANT: Use newDbTenant.Tid so it links to the newly created tenant
                                 occ.Tid = newDbTenant.Tid;
                                 connect.co_occupant.Add(occ);
                             }
@@ -196,7 +205,6 @@ namespace WebApplication1.Controllers
                             {
                                 var doc = new tenant_document
                                 {
-                                    // IMPORTANT: Use newDbTenant.Tid here too!
                                     Tid = newDbTenant.Tid,
                                     fileName = file.name,
                                     fileUrl = file.url,
@@ -225,8 +233,7 @@ namespace WebApplication1.Controllers
                             existingTenant.passwordHash = tenantData.passwordHash;
                         }
 
-                        // --- 6. PROCESS CO-OCCUPANT DELETIONS (The Trash Can) ---
-                        // If the frontend sent an array of IDs to delete, wipe them out
+                        // --- 6. PROCESS CO-OCCUPANT DELETIONS ---
                         if (tenantData.deletedCoOccupants != null && tenantData.deletedCoOccupants.Any())
                         {
                             var recordsToDelete = connect.co_occupant
@@ -241,12 +248,12 @@ namespace WebApplication1.Controllers
                         {
                             foreach (var occ in coOccupants)
                             {
-                                if (occ.id == 0) // It's a brand new row added during the edit
+                                if (occ.id == 0)
                                 {
                                     occ.Tid = existingTenant.Tid;
                                     connect.co_occupant.Add(occ);
                                 }
-                                else // It already exists, just update the text fields
+                                else
                                 {
                                     var existingOcc = connect.co_occupant.Where(c => c.id == occ.id).FirstOrDefault();
                                     if (existingOcc != null)
@@ -258,7 +265,6 @@ namespace WebApplication1.Controllers
                                 }
                             }
                         }
-                        // Safety Catch: If they changed from "With Others" back to "Solo", delete all of their co-occupants
                         else if (tenantData.occupancyTypeId == 1)
                         {
                             var allExistingCoOccupants = connect.co_occupant.Where(c => c.Tid == existingTenant.Tid).ToList();
@@ -268,7 +274,6 @@ namespace WebApplication1.Controllers
                             }
                         }
 
-                        // Save all changes (Tenant updates, Co-occupant deletes, additions, and edits) at once!
                         connect.SaveChanges();
                     }
                 }
@@ -276,7 +281,6 @@ namespace WebApplication1.Controllers
             }
             catch (Exception ex)
             {
-                // Replace ErrorHandling(ex) with however you globally handle exceptions
                 return Json(new { success = false, message = ex.Message }, JsonRequestBehavior.AllowGet);
             }
         }
@@ -443,13 +447,13 @@ namespace WebApplication1.Controllers
                             priority = requestData.priority,
                             description = requestData.description,
                             status = "Pending",
-                            reportedDate = DateTime.Now
+                            reportedDate = DateTime.Now,
                         };
 
                         connect.maintenance_request.Add(newRequest);
                         connect.SaveChanges();
 
-                        return Json(new { success = true, newId = newRequest.id, message = "Added successfully" }, JsonRequestBehavior.AllowGet);
+                        return Json(new { success = true, message = "Request saved successfully" }, JsonRequestBehavior.AllowGet);
                     }
                     else
                     {
@@ -458,19 +462,13 @@ namespace WebApplication1.Controllers
 
                         if (existingRequest != null)
                         {
-                            // Update the fields
-                            existingRequest.Uid = requestData.Uid;
-                            existingRequest.Tid = tid; // Re-evaluate tenant in case they changed the unit
-                            existingRequest.category = requestData.category;
-                            existingRequest.priority = requestData.priority;
-                            existingRequest.description = requestData.description;
-
-                            // Note: We deliberately do NOT update 'status' or 'reportedDate' here 
-                            // so we don't accidentally overwrite them during a basic edit.
+                        
+                            existingRequest.status = requestData.status;
+ 
 
                             connect.SaveChanges();
 
-                            return Json(new { success = true, newId = existingRequest.id, message = "Updated successfully" }, JsonRequestBehavior.AllowGet);
+                            return Json(new { success = true, newId = existingRequest.id, message = "Request saved successfully" }, JsonRequestBehavior.AllowGet);
                         }
                         else
                         {
@@ -482,6 +480,65 @@ namespace WebApplication1.Controllers
             catch (Exception ex)
             {
                 return Json(new { success = false, message = ErrorHandling(ex) }, JsonRequestBehavior.AllowGet);
+            }
+        }
+        [HttpPost]
+        public JsonResult MarkPaymentsPaid(int Tid, int Uid, decimal amount, List<MonthItem> months)
+        {
+            try
+            {
+                using (var db = new DB_Context())
+                {
+                    foreach (var m in months)
+                    {
+                        // Match by Tid, Uid, and dueDate month/year
+                        var existing = db.payment.FirstOrDefault(p =>
+                            p.Tid == Tid &&
+                            p.Uid == Uid &&
+                            p.dueDate.Month == m.Month &&
+                            p.dueDate.Year == m.Year &&
+                            p.paidDate == null
+                        );
+
+                        if (existing != null)
+                        {
+                            // UPDATE — record exists but unpaid
+                            existing.paidDate = DateTime.Now;
+                        }
+                        else
+                        {
+                            // Check if already paid (skip) or truly missing (insert)
+                            bool alreadyPaid = db.payment.Any(p =>
+                                p.Tid == Tid &&
+                                p.Uid == Uid &&
+                                p.dueDate.Month == m.Month &&
+                                p.dueDate.Year == m.Year &&
+                                p.paidDate != null
+                            );
+
+                            if (!alreadyPaid)
+                            {
+                                // INSERT — no record at all for this month
+                                db.payment.Add(new payment
+                                {
+                                    Tid = Tid,
+                                    Uid = Uid,
+                                    amount = amount,
+                                    dueDate = new DateTime(m.Year, m.Month, 1),
+                                    paidDate = DateTime.Now,
+                                    billingPeriod = new DateTime(m.Year, m.Month, 1).ToString("MMMM yyyy")
+                                });
+                            }
+                        }
+                    }
+
+                    db.SaveChanges();
+                    return Json(new { success = true, message = "Payments marked as paid." });
+                }
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ErrorHandling(ex) });
             }
         }
         // Get API
@@ -501,8 +558,7 @@ namespace WebApplication1.Controllers
                         .Where(m => m.status == "Pending")
                         .Select(m => m.status).ToList();
                     var payments = connect.payment
-                        .Where(m => m.status == "Paid")
-                        .AsEnumerable()
+                        .Where(m => m.paidDate != null)
                         .Sum(m => (decimal?)m.amount) ?? 0;
                     var raw = (from b in connect.booking
                                           join u in connect.unit on b.Uid equals u.Uid
@@ -524,24 +580,23 @@ namespace WebApplication1.Controllers
                         status = b.status
                     }).ToList();
                     var monthlyRevenue = connect.payment
-                        .Where(x => x.status == "Paid" && x.paidDate != null)
-                        .Select(x => new
-                        {
-                            Year = x.paidDate.Year,
-                            Month = x.paidDate.Month,
-                            x.amount
-                        })
-                        .AsEnumerable()
-                        .GroupBy(x => new {x.Year, x.Month})
-                        .Select(p => new
-                        {
-                            Year = p.Key.Year,
-                            Month = p.Key.Month,
-                            Revenue = p.Sum(x => x.amount)
-                        })
-                        .OrderBy(x => x.Year)
-                        .ThenBy(x => x.Month)
-                        .ToList();
+                         .Where(x => x.paidDate != null)  // replaces status == "Paid"
+                         .Select(x => new
+                         {
+                             Year = x.paidDate.Value.Year,
+                             Month = x.paidDate.Value.Month,
+                             x.amount
+                         })
+                         .GroupBy(x => new { x.Year, x.Month })
+                         .Select(p => new
+                         {
+                             Year = p.Key.Year,
+                             Month = p.Key.Month,
+                             Revenue = p.Sum(x => x.amount)
+                         })
+                         .OrderBy(x => x.Year)
+                         .ThenBy(x => x.Month)
+                         .ToList();
                     var allUnits = connect.unit.ToList();
                     var allTenants = connect.tenant.ToList();
                     var allCoOccupants = connect.co_occupant.ToList();
@@ -881,10 +936,9 @@ namespace WebApplication1.Controllers
                             unitName = unit != null ? unit.unitName : "Unknown Unit",
                             tenantName = tenant != null ? tenant.name : "Unknown Tenant",
 
-                            // Format dates for the UI
-                            reportedDate = m.reportedDate.ToString("MMM dd, yyyy"),
-                            resolvedDate = m.resolvedDate == DateTime.MinValue ? null : m.resolvedDate.ToString("MMM dd, yyyy"),
+                            reportedDate = m.reportedDate.ToString("MMM dd, yyyy hh:mm tt"),
 
+                            resolvedDate = m.resolvedDate.HasValue ? m.resolvedDate.Value.ToString("MMM dd, yyyy hh:mm tt") : null,
                             // UI placeholders for fields that aren't in your DB model yet
                             photoUrl = (string)null,
                             scheduledDate = (string)null,
@@ -915,6 +969,67 @@ namespace WebApplication1.Controllers
             }
             catch (Exception ex)
             {
+                return Json(new { success = false, message = ErrorHandling(ex) }, JsonRequestBehavior.AllowGet);
+            }
+        }
+        [HttpGet]
+        public JsonResult GetAllPayment()
+        {
+            try
+            {
+                using (var connect = new DB_Context())
+                {
+                    // 1. Fetch tables into memory
+                    // We pull these to memory to handle the computed 'status' property logic safely
+                    var paymentsList = connect.payment.ToList();
+                    var tenantsList = connect.tenant.ToList();
+                    var unitsList = connect.unit.ToList();
+
+                    // 2. Filter to show ONLY the latest bill per tenant
+                    var latestPayments = paymentsList
+                        .GroupBy(p => p.Tid) // Group all bills belonging to the same tenant
+                        .Select(group => group
+                            .OrderByDescending(p => p.dueDate) // Sort by newest date first
+                            .FirstOrDefault() // Pick only the top one (the most recent)
+                        )
+                        .ToList();
+
+                    // 3. Map the data for the frontend
+                    var result = latestPayments.Select(p =>
+                    {
+                        // Find related tenant
+                        var tenant = tenantsList.FirstOrDefault(t => t.Tid == p.Tid);
+
+                        // Find unit (using payment Uid or tenant's current unitId)
+                        var unitIdToFind = p.Uid > 0 ? p.Uid : (tenant != null ? tenant.unitId : 0);
+                        var unit = unitsList.FirstOrDefault(u => u.Uid == unitIdToFind);
+
+                        return new
+                        {
+                            id = p.id,
+                            Tid = p.Tid,
+                            Uid = p.Uid,
+
+                            // Human readable names
+                            tenantName = tenant != null ? tenant.name : "Unknown Tenant",
+                            unitName = unit != null ? unit.unitName : "Unknown Unit",
+
+                            month = p.billingPeriod,
+                            amount = p.amount,
+                            status = p.status, // C# property handles the "Unpaid/Paid/Overdue" logic
+
+                            // Format dates
+                            dueDate = p.dueDate.ToString("MMM dd, yyyy"),
+                            paidDate = p.paidDate.HasValue ? p.paidDate.Value.ToString("MMM dd, yyyy") : null
+                        };
+                    }).ToList();
+
+                    return Json(new { success = true, data = result }, JsonRequestBehavior.AllowGet);
+                }
+            }
+            catch (Exception ex)
+            {
+                // Using your ErrorHandling helper
                 return Json(new { success = false, message = ErrorHandling(ex) }, JsonRequestBehavior.AllowGet);
             }
         }

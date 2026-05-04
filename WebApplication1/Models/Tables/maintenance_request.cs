@@ -15,6 +15,6 @@ namespace WebApplication1.Models.Tables
         public string status { get; set; }
         public string priority { get; set; }
         public DateTime reportedDate { get; set; }
-        public DateTime resolvedDate { get; set; }
+        public DateTime? resolvedDate { get; set; }
     }
 }

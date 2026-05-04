@@ -12,8 +12,32 @@ namespace WebApplication1.Models.Tables
         public int Uid { get; set; }
         public decimal amount { get; set; }
         public DateTime dueDate { get; set; }
-        public DateTime paidDate { get; set; }
-        public string status { get; set; }
+        public DateTime? paidDate { get; set; }
+        public string status
+        {
+            get
+            {
+              
+                if (paidDate <= dueDate.Date)
+                {
+                    return "Paid";
+                }
+
+                // 2. If unpaid and the current date is past the due date.
+                if (DateTime.Now.Date > dueDate.Date)
+                {
+                    return "Overdue";
+                }
+
+                // 3. Otherwise, the due date hasn't passed yet.
+                return "Unpaid";
+            }
+        }
         public string billingPeriod { get; set; }
+    }
+    public class MonthItem
+    {
+        public int Month { get; set; }
+        public int Year { get; set; }
     }
 }

@@ -103,7 +103,7 @@
                         <span>Tenant: <span class="text-slate-600">{{ req.tenantName || '—' }}</span></span>
                         <span>Reported: <span class="text-slate-600">{{ req.reportedDate }}</span></span>
                         <span ng-if="req.resolvedDate">
-                            Resolved: <span class="text-emerald-600">{{ req.resolvedDate }}</span>
+                            Resolved in: <span class="text-emerald-600">{{ req.resolvedDate }}</span>
                         </span>
                     </div>
 
@@ -123,17 +123,17 @@
                 <div class="flex flex-col gap-1.5 flex-shrink-0">
 
                     <!-- Pending → Schedule -->
-                    <button ng-if="req.status === 'Pending'" ng-click="openScheduleModal(req)"
+                    <button ng-if="req.status === 'Pending'" ng-click="opnSchedModal(req)"
                             class="flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl bg-green-600 text-white hover:bg-green-700 transition-all font-medium shadow-sm whitespace-nowrap">
                         <i data-lucide="calendar" class="w-3 h-3"></i> Schedule
                     </button>
 
                     <!-- In Progress → Reschedule + Resolve -->
-                    <button ng-if="req.status === 'In Progress'" ng-click="openScheduleModal(req)"
+                    <button ng-if="req.status === 'In Progress'" ng-click="opnSchedModal(req)"
                             class="flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all whitespace-nowrap">
                         <i data-lucide="calendar" class="w-3 h-3"></i> Reschedule
                     </button>
-                    <button ng-if="req.status === 'In Progress'" ng-click=""
+                    <button ng-if="req.status === 'In Progress'" ng-click="openResolveModal(req)"
                             class="flex items-center gap-1.5 text-xs px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-all whitespace-nowrap">
                         <i data-lucide="check-circle-2" class="w-3 h-3"></i> Resolve
                     </button>
@@ -206,15 +206,17 @@
             </div>
 
             <!-- Time -->
+            <!-- Time -->
             <div>
                 <label class="block text-sm text-slate-700 font-medium mb-2">
                     <i data-lucide="clock" class="w-3.5 h-3.5 inline mr-1 text-green-600"></i>
                     Preferred Time
                 </label>
                 <div class="grid grid-cols-2 gap-2">
-                    <button ng-repeat="t in timeOptions" type="button" ng-click="schedTime = t"
-                            ng-class="schedTime === t ? 'bg-green-600 text-white border-green-600' : 'bg-white text-slate-600 border-slate-200 hover:border-green-300'"
-                            class="py-2 rounded-xl text-xs font-medium border transition-all">
+                    <button ng-repeat="t in timeOptions" type="button"
+                            ng-click="$parent.schedTime = t"
+                            ng-class="$parent.schedTime === t ? 'bg-green-600 text-white border-green-600' : 'bg-white text-slate-600 border-slate-200 hover:border-green-300'"
+                            class="py-2 rounded-xl text-xs font-medium border transition-all focus:outline-none">
                         {{ t }}
                     </button>
                 </div>
@@ -244,7 +246,7 @@
         <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100">
             <h2 class="text-slate-900 font-semibold text-base">New Maintenance Request</h2>
             <button ng-click="closeAddModal()" class="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-all">
-                <i data-lucide="x" class="w-4 h-4"></i>
+                X
             </button>
         </div>
 
@@ -318,7 +320,7 @@
         </div>
 
         <p class="text-slate-700 text-sm text-center mb-3">
-            Are you sure you want to mark this request as <strong>Resolved</strong>?
+            Are you sure you want to mark this request as <strong>Resolved</strong>?, this process cannot be undone
         </p>
 
         <!-- Request Info -->
@@ -329,9 +331,12 @@
         </div>
 
         <div class="flex gap-3">
-            <button ng-click="" class="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-700 text-sm hover:bg-slate-50 transition-all">Cancel</button>
-            <button ng-click="" class="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium transition-all flex items-center justify-center gap-2">
-                <i data-lucide="check-circle-2" class="w-4 h-4"></i> Confirm Resolve
+            <button ng-click="closeResolveModal()" class="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-700 text-sm hover:bg-slate-50 transition-all">Cancel</button>
+            <button ng-click="markAsResolved(resolveConfirmReq.id)" ng-disabled="isResolving"
+                    class="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-sm font-medium transition-all flex items-center justify-center gap-2">
+                <span ng-if="isResolving" class="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                <i ng-if="!isResolving" data-lucide="check-circle-2" class="w-4 h-4"></i>
+                {{ isResolving ? 'Resolving...' : 'Confirm Resolve' }}
             </button>
         </div>
     </div>

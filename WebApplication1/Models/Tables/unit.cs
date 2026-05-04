@@ -9,7 +9,7 @@ namespace WebApplication1.Models.Tables
     {
         public int Uid { get; set; }
         public string unitName { get; set; }
-        public double price { get; set; }
+        public decimal price { get; set; }
         public string beds { get; set; }
         public int sqm { get; set; }
         public string floor { get; set; }
