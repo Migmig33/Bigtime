@@ -48,7 +48,56 @@
         });
         return response;
     };
+    this.DeclineBookingService = function (id, reason) {
+        return $http({
+            method: 'post',
+            url: '/System/DeclineBooking',
+            data: {
+                id: id,
+                reason: reason
+            }
+        });
+    };
+    this.ConfirmBookingService = function (id) {
+        return $http({
+            method: 'post',
+            url: '/System/ConfirmBooking',
+            data: {
+                id: id
+            }
+        });
+    };
+    this.ToggleBusyDateService = function (dateStr) {
+        return $http({
+            method: 'POST',
+            url: '/System/ToggleBusyDate',
+            data: {
+                dateStr: dateStr
+            }
+        });
+    };
+    this.SaveMaintenanceRequestService = function (requestData, id) {
+        return $http({
+            method: 'post',
+            url: '/System/SaveMaintenanceRequest',
+            data: {
+                requestData: requestData,
+                id: id
+            },
+            headers: {"Content-Type": "application/json"}
+        })
+    }
+    this.RemoveBusyDateService = function (dateStr) {
+        var response = $http({
+            method: 'POST',
+            url: '/System/RemoveBusyDate',
+            data: {
+                dateStr: dateStr
+            }
+        });
+        return response;
 
+    };
     //Get service
     this.GetDashboardDataService = function () {
         return $http.get('/System/GetDashboardData');
@@ -59,6 +108,13 @@
     this.GetAllTenantService = function () {
         return $http.get('/System/GetAllTenant');
     }
+    this.GetAllBookingsService = function () {
+        return $http.get('/System/GetAllBooking')
+    }
+    this.GetAllMaintenanceService = function () {
+        return $http.get('/System/GetAllMaintenance')
+    }
+   
 
     //Delete Service
     this.DeleteUnitService = function (id) {

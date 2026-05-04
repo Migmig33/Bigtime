@@ -26,6 +26,7 @@ namespace WebApplication1.Models.Context
         public virtual DbSet<amenity> amenity { get; set; }
         public virtual DbSet<admin> admin { get; set; }
         public virtual DbSet<sms_log> sms_log { get; set; }
+        public virtual DbSet<busy_schedule> busy_schedule { get; set; } 
 
         protected override void OnModelCreating(DbModelBuilder modelBuilder)
         {
@@ -42,6 +43,7 @@ namespace WebApplication1.Models.Context
             modelBuilder.Configurations.Add(new Maps.booking_maps());
             modelBuilder.Configurations.Add(new Maps.amenity_maps());
             modelBuilder.Configurations.Add(new Maps.admin_maps());
+            modelBuilder.Configurations.Add(new Maps.busy_schedule_maps());
         }
 
     }

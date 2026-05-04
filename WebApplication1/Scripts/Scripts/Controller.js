@@ -10,6 +10,9 @@
     $scope.editorModal = false;
     $scope.deleteUnitConfirm = false;
     $scope.deleteTenantConfirm = false;
+    $scope.selectedBooking = false;
+    $scope.declineTarget = false;
+    $scope.confirmTarget = false;
 
     // Auth State
     $scope.step = 'credentials';
@@ -79,7 +82,8 @@
             'Bookings': '/System/AdminBookings',
             'Tenants': '/System/AdminTenants',
             'Payments': '/System/AdminPayments',
-            'Maintenance': '/System/Maintenance'
+            'Maintenance': '/System/AdminMaintenance',
+            'Logout-Admin': '/System/AdminLogin'
         };
         if (routes[page]) window.location.href = routes[page];
     };
@@ -574,6 +578,265 @@
     // ==========================================
     // 9. Booking MANAGEMENT (CRUD & Filters)
     // ==========================================
+    $scope.getAllBookings = function () {
+        // Replace with your actual service call
+        service.GetAllBookingsService().then(function (response) {
+            if (response.data.success) {
+
+                // 1. Assign the main flat arrays
+                $scope.bookings = response.data.bookings;
+                $scope.busyDates = response.data.busyDates || [];
+
+                // 2. Set default filter states
+                $scope.currentFilter = 'All';
+                $scope.statusFilter = '';
+
+                // 3. Process data for the "Upcoming Viewing Schedule" widget
+                $scope.groupedBookings = {};
+                $scope.upcomingBookings = [];
+
+                // Filter for only Pending or Confirmed bookings that are in the future
+                var now = new Date();
+                $scope.upcomingBookings = $scope.bookings.filter(function (b) {
+                    var bookDate = new Date(b.datetime);
+                    return (b.status === 'Pending' || b.status === 'Confirmed') && bookDate >= now;
+                });
+
+                // Group them by Date string (YYYY-MM-DD) so your UI can render headers
+                $scope.upcomingBookings.forEach(function (b) {
+                    var d = new Date(b.datetime);
+                    var year = d.getFullYear();
+                    var month = String(d.getMonth() + 1).padStart(2, '0');
+                    var day = String(d.getDate()).padStart(2, '0');
+                    var dateKey = year + '-' + month + '-' + day; // e.g., "2026-05-04"
+
+                    // If this date doesn't exist in our group yet, create an empty array for it
+                    if (!$scope.groupedBookings[dateKey]) {
+                        $scope.groupedBookings[dateKey] = [];
+                    }
+
+                    // Push the booking into its specific date bucket
+                    $scope.groupedBookings[dateKey].push(b);
+                });
+
+            } else {
+                $scope.showToast("Failed to load bookings", "error");
+            }
+        });
+    };
+    // --- MODAL STATE VARIABLES ---
+   
+
+    // Form & Loading States
+    $scope.declineReason = "";
+    $scope.declineCustom = "";
+    $scope.declineLoading = false;
+    $scope.confirmLoading = false;
+
+    // The options for the decline pill buttons
+    $scope.DECLINE_REASONS = [
+        "Unit Unavailable",
+        "Incomplete Details",
+        "Schedule Conflict",
+        "Other"
+    ];
+
+    // --- 1. MAIN DETAIL MODAL FUNCTIONS ---
+    $scope.openDetailModal = function (booking) {
+        $scope.selectedBooking = booking;
+
+        // Quick helper to re-initialize lucide icons inside the modal after it renders
+        setTimeout(function () {
+            if (window.lucide) { window.lucide.createIcons(); }
+        }, 50);
+    };
+
+    $scope.closeModal = function () {
+        $scope.selectedBooking = null;
+    };
+
+    // Checks if the booking date matches a blocked admin date
+    $scope.isDateBusy = function (datetimeString) {
+        if (!datetimeString || !$scope.busyDates) return false;
+        var dateOnly = datetimeString.split('T')[0];
+        return $scope.busyDates.indexOf(dateOnly) !== -1;
+    };
+    $scope.removeBusyDt = function (dateStr) {
+        // Pass the specific date to the backend
+        service.RemoveBusyDateService(dateStr).then(function (response) {
+            if (response.data.success) {
+                // Remove it from the UI array instantly
+                var idx = $scope.busyDates.indexOf(dateStr);
+                if (idx !== -1) {
+                    $scope.busyDates.splice(idx, 1);
+                }
+            } else {
+                alert("Error: " + response.data.message);
+            }
+        }, function (error) {
+            alert("Server error occurred.");
+        });
+    };
+
+    // --- 2. Clear ALL dates (when clicking 'Clear all') ---
+    $scope.clearBusyDt = function () {
+        var isSure = confirm("Are you sure you want to clear ALL busy dates?");
+
+        if (isSure) {
+            // Pass the secret "ALL" command to the backend
+            service.RemoveBusyDateService("ALL").then(function (response) {
+                if (response.data.success) {
+                    // Wipe the UI array instantly
+                    $scope.busyDates = [];
+                } else {
+                    alert("Error: " + response.data.message);
+                }
+            }, function (error) {
+                alert("Server error occurred.");
+            });
+        }
+    };
+    // --- 2. DECLINE MODAL FUNCTIONS ---
+    $scope.openDecline = function (booking) {
+        $scope.closeModal(); // Close detail modal first
+        $scope.declineTarget = booking;
+        $scope.declineReason = "";
+        $scope.declineCustom = "";
+        $scope.declineLoading = false;
+
+        setTimeout(function () { if (window.lucide) { window.lucide.createIcons(); } }, 50);
+    };
+
+    $scope.closeDecline = function () {
+        $scope.declineTarget = null;
+    };
+
+    $scope.setDeclineReason = function (reason) {
+        $scope.declineReason = reason;
+        if (reason !== 'Other') {
+            $scope.declineCustom = ""; // Clear text box if they click a predefined reason
+        }
+    };
+
+    $scope.submitDecline = function () {
+        $scope.declineLoading = true;
+
+        // Determine the final reason string
+        var finalReason = $scope.declineReason === 'Other' ? $scope.declineCustom : $scope.declineReason;
+
+        // TODO: Hit your C# Backend endpoint here!
+        // Example: service.DeclineBooking($scope.declineTarget.id, finalReason).then(...)
+
+        // Simulating a network request for 1 second so you can see the spinner
+        setTimeout(function () {
+            $scope.$apply(function () {
+                // Update UI locally
+                $scope.declineTarget.status = 'Declined';
+                $scope.declineTarget.cancelReason = finalReason;
+
+                // Close and reset
+                $scope.declineLoading = false;
+                $scope.closeDecline();
+                $scope.showToast("Booking declined successfully.", "success");
+            });
+        }, 1000);
+    };
+
+    // --- 3. CONFIRM MODAL FUNCTIONS ---
+    $scope.openConfirm = function (booking) {
+        $scope.closeModal(); // Close detail modal first
+        $scope.confirmTarget = booking;
+        $scope.confirmLoading = false;
+
+        setTimeout(function () { if (window.lucide) { window.lucide.createIcons(); } }, 50);
+    };
+
+    $scope.closeConfirm = function () {
+        $scope.confirmTarget = null;
+    };
+
+    $scope.submitConfirm = function () {
+        $scope.confirmLoading = true;
+
+        // TODO: Hit your C# Backend endpoint here!
+        // Example: service.ConfirmBooking($scope.confirmTarget.id).then(...)
+
+        // Simulating a network request for 1 second
+        setTimeout(function () {
+            $scope.$apply(function () {
+                $scope.confirmTarget.status = 'Confirmed';
+                $scope.confirmLoading = false;
+                $scope.closeConfirm();
+                $scope.showToast("Booking confirmed! Guest has been notified.", "success");
+            });
+        }, 1000);
+    };
+    // Also, add this tiny helper function for your Filter Tabs!
+    $scope.setFilter = function (tabName) {
+        $scope.currentFilter = tabName;
+        if (tabName === 'All') {
+            $scope.statusFilter = ''; // Show everything
+        } else {
+            $scope.statusFilter = tabName; // Exact match (Pending, Confirmed, etc.)
+        }
+    };
+    // --- ACTUAL SUBMIT DECLINE ---
+    // --- ACTUAL SUBMIT DECLINE ---
+    $scope.submitDecline = function () {
+        $scope.declineLoading = true;
+
+        // Determine the final reason string (pre-picked or custom text)
+        var finalReason = $scope.declineReason === 'Other' ? $scope.declineCustom : $scope.declineReason;
+
+        // Call the Service instead of $http directly
+        service.DeclineBookingService($scope.declineTarget.id, finalReason).then(function (response) {
+            if (response.data.success) {
+                // Instantly update the UI so we don't have to reload the page
+                $scope.declineTarget.status = 'Declined';
+                $scope.declineTarget.cancelReason = finalReason;
+
+                // Close modal and stop spinner
+                $scope.declineLoading = false;
+                $scope.closeDecline();
+
+                // Optional: Show a success message if you have a toast function
+                // $scope.showToast(response.data.message, "success");
+            } else {
+                $scope.declineLoading = false;
+                alert("Error: " + response.data.message);
+            }
+        }, function (error) {
+            $scope.declineLoading = false;
+            alert("Server error occurred.");
+        });
+    };
+
+    // --- ACTUAL SUBMIT CONFIRM ---
+    $scope.submitConfirm = function () {
+        $scope.confirmLoading = true;
+
+        // Call the Service instead of $http directly
+        service.ConfirmBookingService($scope.confirmTarget.id).then(function (response) {
+            if (response.data.success) {
+                // Instantly update the UI
+                $scope.confirmTarget.status = 'Confirmed';
+
+                // Close modal and stop spinner
+                $scope.confirmLoading = false;
+                $scope.closeConfirm();
+
+                // Optional: Show a success message
+                // $scope.showToast(response.data.message, "success");
+            } else {
+                $scope.confirmLoading = false;
+                alert("Error: " + response.data.message);
+            }
+        }, function (error) {
+            $scope.confirmLoading = false;
+            alert("Server error occurred.");
+        });
+    };
+
     $scope.isBusyOpen = false;
     $scope.busyDates = []; // Make sure this connects to your database array if needed
 
@@ -648,15 +911,34 @@
     };
 
     $scope.toggleBusyDate = function (dayObj) {
+        // Prevent clicking on past dates
         if (dayObj.isPast) return;
 
-        var idx = $scope.busyDates.indexOf(dayObj.dateStr);
-        if (idx === -1) {
-            $scope.busyDates.push(dayObj.dateStr);
-        } else {
-            $scope.busyDates.splice(idx, 1);
-        }
-        $scope.busyDates.sort(); // Keep list ordered
+        // Call the database service
+        service.ToggleBusyDateService(dayObj.dateStr).then(function (response) {
+
+            if (response.data.success) {
+                // Find where this date is in our local array
+                var idx = $scope.busyDates.indexOf(dayObj.dateStr);
+
+                // Sync our local array with what the database just did
+                if (response.data.action === "added" && idx === -1) {
+                    $scope.busyDates.push(dayObj.dateStr);
+                }
+                else if (response.data.action === "removed" && idx !== -1) {
+                    $scope.busyDates.splice(idx, 1);
+                }
+
+                // Keep the array neatly sorted by date
+                $scope.busyDates.sort();
+
+            } else {
+                alert("Failed to update busy schedule: " + response.data.message);
+            }
+
+        }, function (error) {
+            alert("Server error occurred while updating the calendar.");
+        });
     };
 
     $scope.removeBusyDate = function (dateStr) {
@@ -686,10 +968,190 @@
 
 
 
+    // ==========================================
+    // 10. MAINTENANCE CRUD bullshit
+    // ==========================================
+    // --- STATE VARIABLES ---
+    $scope.maintenanceRequests = [];
+    $scope.units = []; // Used for the Add Request dropdown
 
+    // Filters
+    $scope.maintenanceStatusFilter = 'All';
+    $scope.maintenanceSearch = '';
+
+    // Modals & Form States
+    $scope.previewPhoto = null;
+    $scope.scheduleOpen = false;
+    $scope.addOpen = false;
+    $scope.resolveConfirmReq = null;
+
+    // Schedule Form
+    $scope.schedulingReq = null;
+    $scope.schedDate = null;
+    $scope.schedTime = null;
+    $scope.timeOptions = [
+        "08:00 AM", "09:00 AM", "10:00 AM", "11:00 AM",
+        "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM"
+    ];
+
+    // New Request Form
+    $scope.isSubmitting = false;
+
+
+    // 1. Open Modal & Reset Form Fields
+    $scope.openAddModal = function () {
+        // Reset individual variables to default values
+        $scope.unitId = "";
+        $scope.Tid = "";
+        $scope.category = "Plumbing";
+        $scope.priority = "Medium";
+        $scope.description = "";
+
+        $scope.isSubmitting = false;
+        $scope.addOpen = true;
+
+        // Re-initialize icons for the modal
+        setTimeout(function () {
+            if (window.lucide) { window.lucide.createIcons(); }
+        }, 50);
+    };
+
+    // 2. Close Modal
+    $scope.closeAddModal = function () {
+        $scope.addOpen = false;
+    };
+
+    $scope.submitAddRequest = function (id) {
+        // Basic Validation directly on scope variables
+        if (!$scope.unitId || !$scope.description) {
+            alert("Please select a unit and provide a description.");
+            return;
+        }
+
+        $scope.isSubmitting = true;
+
+        // 1. Pack the data into an object to send to the server
+        var payload = {
+            id: id, // If editing
+            Uid: $scope.unitId,
+            Tid: $scope.Tid, // <-- Now passing the Tenant ID directly
+            category: $scope.category,
+            priority: $scope.priority,
+            description: $scope.description
+        };
+
+        // 2. Call the new Service
+        service.SaveMaintenanceRequestService(payload, id).then(function (response) {
+            if (response.data.success) {
+
+                // 3. Find the unit name so we can display it instantly in the UI
+                var selectedUnit = $scope.units.find(function (u) {
+                    return u.Uid.toString() === $scope.unitId.toString();
+                });
+
+                // 4. Create the local object to update the UI instantly
+                var newRequest = {
+                    id: response.data.id, // The real database ID returned from C#
+                    category: $scope.category,
+                    status: "Pending",
+                    description: $scope.description,
+                    unitName: selectedUnit ? selectedUnit.unitName : "Unknown",
+                    tenantName: $scope.tenantName || "—",
+                    reportedDate: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                    priority: $scope.priority
+                };
+
+                // Push to the top of the array
+                $scope.maintenanceRequests.unshift(newRequest);
+
+                // Close modal and stop loading
+                $scope.isSubmitting = false;
+                $scope.closeAddModal();
+
+            } else {
+                $scope.isSubmitting = false;
+                alert("Failed to add request: " + response.data.message);
+            }
+        }, function (error) {
+            $scope.isSubmitting = false;
+            alert("Server error occurred while adding the request.");
+        });
+    };
+    // --- MAIN GET FUNCTION ---
+    $scope.getAllMaintenance = function () {
+        // Replace 'service.GetAllMaintenanceService' with your actual service method
+        service.GetAllMaintenanceService().then(function (response) {
+            if (response.data.success) {
+
+                // 1. Assign the requests array
+                $scope.maintenanceRequests = response.data.requests || [];
+
+                // 2. Assign the units for the 'Add Request' dropdown 
+                // (Assuming your backend returns this in the same call, 
+                // otherwise make a separate service call for units)
+                $scope.units = response.data.units || [];
+
+                $scope.tenants = response.data.tenants || [];
+
+                // 3. Re-initialize icons just in case
+                setTimeout(function () {
+                    if (window.lucide) { window.lucide.createIcons(); }
+                }, 50);
+
+            } else {
+                // alert or showToast based on your app's standard
+                alert("Failed to load maintenance data: " + response.data.message);
+            }
+        }, function (error) {
+            alert("Server error occurred while fetching maintenance requests.");
+        });
+    };
+
+    // --- HELPERS & FILTERS ---
+
+    // Counts requests by status for the top summary cards
+    $scope.countByStatus = function (status) {
+        if (!$scope.maintenanceRequests) return 0;
+        return $scope.maintenanceRequests.filter(function (req) {
+            return req.status === status;
+        }).length;
+    };
+
+    // Returns the filtered list for the ng-repeat based on Tabs and Search bar
+    $scope.filteredMaintenance = function () {
+        if (!$scope.maintenanceRequests) return [];
+
+        return $scope.maintenanceRequests.filter(function (req) {
+            // 1. Check Status Tab Filter
+            var matchStatus = true;
+            if ($scope.maintenanceStatusFilter !== 'All') {
+                matchStatus = (req.status === $scope.maintenanceStatusFilter);
+            }
+
+            // 2. Check Text Search Filter
+            var matchSearch = true;
+            if ($scope.maintenanceSearch && $scope.maintenanceSearch.trim() !== '') {
+                var term = $scope.maintenanceSearch.toLowerCase().trim();
+
+                // Allow searching by category, description, unit, or tenant
+                matchSearch =
+                    (req.category && req.category.toLowerCase().includes(term)) ||
+                    (req.description && req.description.toLowerCase().includes(term)) ||
+                    (req.unitName && req.unitName.toLowerCase().includes(term)) ||
+                    (req.tenantName && req.tenantName.toLowerCase().includes(term));
+            }
+
+            return matchStatus && matchSearch;
+        });
+    };
+
+    // Update filter when clicking the Status Tab buttons (You need to add ng-click="setStatusFilter('Pending')" to your HTML buttons)
+    $scope.setStatusFilter = function (status) {
+        $scope.maintenanceStatusFilter = status;
+    };
 
     // ==========================================
-    // 10. FILE UPLOADS (Images & IDs)
+    // 11. FILE UPLOADS (Images & IDs)
     // ==========================================
     $scope.handleImageUpload = function (files) {
         $scope.$apply(function () {

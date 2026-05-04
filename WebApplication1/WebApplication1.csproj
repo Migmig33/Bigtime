@@ -225,6 +225,7 @@
     <Compile Include="Models\Maps\admin_maps.cs" />
     <Compile Include="Models\Maps\amenity_maps.cs" />
     <Compile Include="Models\Maps\booking_maps.cs" />
+    <Compile Include="Models\Maps\busy_schedule_maps.cs" />
     <Compile Include="Models\Maps\co_occupant_maps.cs" />
     <Compile Include="Models\Maps\maintenance_request_maps.cs" />
     <Compile Include="Models\Maps\occupancy_type_maps.cs" />
@@ -237,6 +238,7 @@
     <Compile Include="Models\Tables\admin.cs" />
     <Compile Include="Models\Tables\amenity.cs" />
     <Compile Include="Models\Tables\booking.cs" />
+    <Compile Include="Models\Tables\busy_schedule.cs" />
     <Compile Include="Models\Tables\co_occupant.cs" />
     <Compile Include="Models\Tables\IdFileDto.cs" />
     <Compile Include="Models\Tables\maintenance_request.cs" />
@@ -253,6 +255,7 @@
     <Compile Include="Services\EmailServices.cs" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="Assets\bg.jpg" />
     <Content Include="Content\bootstrap-grid.css" />
     <Content Include="Content\bootstrap-grid.min.css" />
     <Content Include="Content\bootstrap-grid.rtl.css" />

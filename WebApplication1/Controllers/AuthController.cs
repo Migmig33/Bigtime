@@ -32,7 +32,7 @@ namespace WebApplication1.Controllers
                         Session["VerifyEmail"] = data.email; // Store the email in session for later use
                         Session["VerifyExpiry"] = DateTime.Now.AddMinutes(5); // Set code expiry time to 5 minutes
 
-                        EmailServices.SendEmail(data.email, code); // Send the code to the user's email
+                        EmailServices.SendEmailVerification(data.email, code); // Send the code to the user's email
 
                         TempData["Email"] = data.email;
                         return Json(new { success = true, message = "Verification code sent to " + data.email  }, JsonRequestBehavior.AllowGet);

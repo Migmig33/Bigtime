@@ -1,7 +1,7 @@
 ﻿@{
     Layout = "~/Views/Shared/_AdminLayout.cshtml";
 }
-<div class="p-6 space-y-6">
+<div class="p-6 space-y-6" ng-init="getAllBookings(); currentPage = 'Bookings'">
     <div class="flex items-center justify-between">
         <div>
             <h1 class="text-slate-900 text-2xl font-bold">Bookings</h1>
@@ -102,7 +102,7 @@
                         <div>
                             <div class="flex items-center justify-between mb-3">
                                 <p class="text-xs text-slate-500 font-medium uppercase tracking-wide">Marked Busy Dates</p>
-                                <button type="button" ng-if="busyDates.length > 0" ng-click="clearAllBusy()" class="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 transition-colors focus:outline-none">
+                                <button type="button" ng-if="busyDates.length > 0" ng-click="clearBusyDt()" class="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 transition-colors focus:outline-none">
                                     <i data-lucide="trash-2" class="w-3 h-3"></i> Clear all
                                 </button>
                             </div>
@@ -115,18 +115,22 @@
                             </div>
 
                             <!-- Populated List -->
-                            <div ng-if="busyDates.length > 0" class="space-y-2 max-h-48 overflow-y-auto pr-1">
-                                <div ng-repeat="dateStr in busyDates track by $index" class="flex items-center justify-between px-3 py-2.5 bg-orange-50 border border-orange-100 rounded-xl animate-fade-in">
-                                    <div class="flex items-center gap-2">
-                                        <!-- Using raw SVG here so AngularJS dynamically rendered lists don't break Lucide -->
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-orange-500 flex-shrink-0"><path d="M4.2 4.2l15.6 15.6" /><path d="M21 15.5V6a2 2 0 0 0-2-2H9.5" /><path d="M16 2v4" /><path d="M3 10h7" /><path d="M21 10h-5.5" /><path d="M8 2v2" /><path d="M3 6v14c0 1.1.9 2 2 2h14c.3 0 .6-.1.8-.2" /></svg>
-                                        <span class="text-sm text-orange-800 font-medium">{{ formatDateLabel(dateStr) }}</span>
+                            <!-- Populated List -->
+
+                                <div ng-show="busyDates.length > 0" class="space-y-2 max-h-48 overflow-y-auto pr-1">
+
+                                    <div ng-repeat="dateStr in busyDates track by dateStr" class="flex items-center justify-between px-3 py-2.5 bg-orange-50 border border-orange-100 rounded-xl animate-fade-in">
+                                        <div class="flex items-center gap-2">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-orange-500 flex-shrink-0"><path d="M4.2 4.2l15.6 15.6" /><path d="M21 15.5V6a2 2 0 0 0-2-2H9.5" /><path d="M16 2v4" /><path d="M3 10h7" /><path d="M21 10h-5.5" /><path d="M8 2v2" /><path d="M3 6v14c0 1.1.9 2 2 2h14c.3 0 .6-.1.8-.2" /></svg>
+                                            <span class="text-sm text-orange-800 font-medium">{{ formatDateLabel(dateStr) }}</span>
+                                        </div>
+
+                                        <!-- FIX 2: Removed $parent. Just call the function directly! -->
+                                        <button type="button" ng-click="removeBusyDt(dateStr)" class="p-1 rounded-lg hover:bg-orange-200 text-orange-400 hover:text-orange-700 transition-colors focus:outline-none">
+                                            CLICK ME TO TEST
+                                        </button>
                                     </div>
-                                    <button type="button" ng-click="removeBusyDate(dateStr)" class="p-1 rounded-lg hover:bg-orange-200 text-orange-400 hover:text-orange-700 transition-colors focus:outline-none">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18" /><path d="M6 6l12 12" /></svg>
-                                    </button>
                                 </div>
-                            </div>
 
                             <div class="mt-4 p-3 bg-amber-50 border border-amber-100 rounded-xl text-xs text-amber-700">
                                 ⚠️ Busy dates are <strong>immediately blocked</strong> on the public booking calendar. Guests will see these dates grayed out and cannot select them.
@@ -151,7 +155,7 @@
             </button>
 
             <div ng-show="isUpcomingOpen" class="border-t border-slate-100 p-5 space-y-5 max-h-[420px] overflow-y-auto">
-                <div ng-if="(upcomingBookings | filter:true).length === 0" class="text-center py-12 border-2 border-dashed border-slate-200 rounded-xl">
+                <div ng-if="upcomingBookings.length === 0" class="text-center py-12 border-2 border-dashed border-slate-200 rounded-xl">
                     <p class="text-slate-400 text-sm">No upcoming viewings</p>
                 </div>
 
@@ -216,11 +220,34 @@
                         </td>
                         <td class="px-5 py-3">
                             <div class="flex items-center gap-1.5">
-                                <button ng-click="openDetailModal(b)" class="p-1.5 rounded-lg hover:bg-green-50 text-slate-400 hover:text-green-600 focus:outline-none"><i data-lucide="eye" class="w-4 h-4"></i></button>
-                                <button ng-if="b.status === 'Pending'" ng-click="updateStatus(b.id, 'Confirmed')" class="p-1.5 rounded-lg hover:bg-green-50 text-slate-400 hover:text-green-600 focus:outline-none"><i data-lucide="check" class="w-4 h-4"></i></button>
-                                <button ng-if="b.status === 'Pending'" ng-click="updateStatus(b.id, 'Declined')" class="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600 focus:outline-none"><i data-lucide="x" class="w-4 h-4"></i></button>
+
+                                <!-- View Details Button -->
+                                <button type="button" ng-click="openDetailModal(b)" class="p-1.5 rounded-lg hover:bg-green-50 text-slate-400 hover:text-green-600 focus:outline-none" title="View Details">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+                                        <circle cx="12" cy="12" r="3" />
+                                    </svg>
+                                </button>
+
+                                <!-- Quick Confirm Button -->
+                                <button type="button" ng-if="b.status === 'Pending'" ng-click="openConfirm(b)" class="p-1.5 rounded-lg hover:bg-green-50 text-slate-400 hover:text-green-600 focus:outline-none" title="Confirm Booking">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M20 6 9 17l-5-5" />
+                                    </svg>
+                                </button>
+
+                                <!-- Quick Decline Button -->
+                                <button type="button" ng-if="b.status === 'Pending'" ng-click="openDecline(b)" class="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600 focus:outline-none" title="Decline Booking">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M18 6 6 18" />
+                                        <path d="m6 6 12 12" />
+                                    </svg>
+                                </button>
+
                             </div>
                         </td>
+
+
                     </tr>
                     <tr ng-if="(bookings | filter:searchText | filter:statusFilter).length === 0">
                         <td colspan="5" class="text-center py-12 text-slate-400 text-sm">No bookings found</td>
@@ -230,28 +257,209 @@
         </div>
     </div>
 
-    <div ng-show="selectedBooking" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50">
-        <div class="bg-white rounded-2xl w-full max-w-md p-6 shadow-xl">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-lg font-semibold text-slate-900">Booking Details</h2>
-                <button ng-click="closeModal()" class="text-slate-400 hover:text-slate-700 focus:outline-none"><i data-lucide="x" class="w-5 h-5"></i></button>
-            </div>
-            <div class="space-y-4">
+    <div ng-show="selectedBooking" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900 bg-opacity-50 backdrop-filter backdrop-blur-sm transition-opacity">
+        <div class="bg-white rounded-2xl w-full max-w-md p-6 shadow-xl transform transition-all relative">
+
+            <!-- FIX: Close Button using guaranteed RAW SVG -->
+            <button type="button" ng-click="closeModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-700 focus:outline-none">
+                X
+            </button>
+
+            <div class="space-y-4 mt-2">
+                <!-- Header -->
                 <div class="flex items-center gap-3 pb-4 border-b border-slate-100">
+                    <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center text-green-700 font-bold text-lg">
+                        {{ selectedBooking.name.charAt(0) }}
+                    </div>
                     <div>
-                        <h3 class="text-slate-900 font-medium">{{ selectedBooking.name }}</h3>
-                        <p class="text-sm text-slate-500">{{ selectedBooking.status }}</p>
+                        <h3 class="text-slate-900 font-semibold">{{ selectedBooking.name }}</h3>
+                        <span class="px-2 py-0.5 mt-1 inline-block rounded-full text-xs font-medium"
+                              ng-class="{
+                          'bg-amber-100 text-amber-700': selectedBooking.status === 'Pending',
+                          'bg-green-100 text-green-700': selectedBooking.status === 'Confirmed',
+                          'bg-red-100 text-red-700': selectedBooking.status === 'Declined' || selectedBooking.status === 'Cancelled'
+                          }">
+                            {{ selectedBooking.status }}
+                        </span>
                     </div>
                 </div>
-                <div class="text-sm space-y-2 text-slate-700">
-                    <p><strong>Email:</strong> {{ selectedBooking.email }}</p>
-                    <p><strong>Phone:</strong> {{ selectedBooking.phone || 'N/A' }}</p>
-                    <p><strong>Unit:</strong> {{ selectedBooking.unitName }}</p>
-                    <p><strong>Date & Time:</strong> {{ selectedBooking.datetime | date:'MMM dd, yyyy \'at\' h:mm a' }}</p>
+
+                <!-- Busy Date Warning -->
+                <div ng-if="isDateBusy(selectedBooking.datetime)" class="p-3 bg-orange-50 border border-orange-200 rounded-xl text-xs text-orange-700 flex items-center gap-2">
+                    <!-- Using raw SVG here too just in case! -->
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="flex-shrink-0"><path d="M4.2 4.2l15.6 15.6" /><path d="M21 15.5V6a2 2 0 0 0-2-2H9.5" /><path d="M16 2v4" /><path d="M3 10h7" /><path d="M21 10h-5.5" /><path d="M8 2v2" /><path d="M3 6v14c0 1.1.9 2 2 2h14c.3 0 .6-.1.8-.2" /></svg>
+                    This booking falls on an admin busy day.
                 </div>
-                <div class="flex gap-3 pt-4" ng-if="selectedBooking.status === 'Pending'">
-                    <button ng-click="updateStatus(selectedBooking.id, 'Declined'); closeModal()" class="flex-1 py-2 rounded-xl border border-red-200 text-red-600 font-medium hover:bg-red-50 transition-all">Decline</button>
-                    <button ng-click="updateStatus(selectedBooking.id, 'Confirmed'); closeModal()" class="flex-1 py-2 rounded-xl bg-green-600 text-white font-medium hover:bg-green-700 transition-all">Confirm</button>
+
+                <!-- Decline/Cancel Reason -->
+                <div ng-if="(selectedBooking.status === 'Declined' || selectedBooking.status === 'Cancelled') && selectedBooking.cancelReason" class="p-3 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-red-500 flex-shrink-0 mt-0.5"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" /></svg>
+                    <div>
+                        <p class="text-xs text-red-500 font-medium mb-0.5">
+                            {{ selectedBooking.status === 'Declined' ? 'Decline Reason' : 'Cancellation Reason' }}
+                        </p>
+                        <p class="text-sm text-red-700">{{ selectedBooking.cancelReason }}</p>
+                    </div>
+                </div>
+
+                <!-- Details List -->
+                <div class="space-y-3">
+                    <div class="flex items-start gap-3 text-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-green-500 mt-0.5 flex-shrink-0"><rect width="18" height="18" x="3" y="4" rx="2" ry="2" /><line x1="16" x2="16" y1="2" y2="6" /><line x1="8" x2="8" y1="2" y2="6" /><line x1="3" x2="21" y1="10" y2="10" /></svg>
+                        <div>
+                            <p class="text-slate-400 text-xs">Date & Time</p>
+                            <p class="text-slate-900">{{ selectedBooking.datetime | date:'MMM dd, yyyy \'at\' h:mm a' }}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-3 text-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-green-500 mt-0.5 flex-shrink-0"><rect width="20" height="16" x="2" y="4" rx="2" /><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" /></svg>
+                        <div>
+                            <p class="text-slate-400 text-xs">Email</p>
+                            <p class="text-slate-900">{{ selectedBooking.email }}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-3 text-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-green-500 mt-0.5 flex-shrink-0"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" /></svg>
+                        <div>
+                            <p class="text-slate-400 text-xs">Phone</p>
+                            <p class="text-slate-900">{{ selectedBooking.phone || 'Not provided' }}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-3 text-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-500 mt-0.5 flex-shrink-0"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>
+                        <div>
+                            <p class="text-slate-400 text-xs">Unit</p>
+                            <p class="text-slate-900">{{ selectedBooking.unitName }}</p>
+                        </div>
+                    </div>
+
+                    <!-- Notes -->
+                    <div ng-if="selectedBooking.notes" class="bg-slate-50 rounded-xl p-3 text-sm text-slate-600 mt-2">
+                        <p class="text-slate-400 text-xs mb-1">Guest Notes</p>
+                        {{ selectedBooking.notes }}
+                    </div>
+                </div>
+
+                <!-- Action Buttons (Only for Pending) -->
+                <div ng-if="selectedBooking.status === 'Pending'" class="flex gap-3 pt-2">
+                    <button type="button" ng-click="openDecline(selectedBooking)" class="flex-1 py-2.5 rounded-xl border border-red-200 text-red-600 text-sm font-medium hover:bg-red-50 transition-all focus:outline-none focus:ring-2 focus:ring-red-500">
+                        Decline
+                    </button>
+                    <button type="button" ng-click="openConfirm(selectedBooking)" class="flex-1 py-2.5 rounded-xl bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition-all focus:outline-none focus:ring-2 focus:ring-green-500">
+                        Confirm
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div ng-show="declineTarget" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-[60]">
+        <div class="bg-white rounded-2xl w-full max-w-md p-6 shadow-xl">
+            <button type="button" ng-click="closeDecline()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-700 focus:outline-none">
+                X
+            </button>
+            <h2 class="text-lg font-semibold text-slate-900 mb-4">Decline Booking</h2>
+
+            <div class="space-y-5">
+                <!-- Summary -->
+                <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                    <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center text-red-700 font-bold flex-shrink-0">
+                        {{ declineTarget.name.charAt(0) }}
+                    </div>
+                    <div class="min-w-0">
+                        <p class="text-slate-900 text-sm font-medium">{{ declineTarget.name }}</p>
+                        <p class="text-slate-500 text-xs truncate">{{ declineTarget.unitName }} &bull; {{ declineTarget.datetime | date:'MMM dd, yyyy' }}</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <i data-lucide="alert-triangle" class="w-4 h-4 text-red-500 flex-shrink-0"></i>
+                    <p class="text-slate-700 text-sm font-medium">Please provide a reason for declining</p>
+                </div>
+                <p class="text-slate-400 text-xs -mt-3">This reason will be visible to the guest in their email.</p>
+
+                <!-- Quick-pick Reasons -->
+                <div class="flex flex-wrap gap-2">
+                    <button ng-repeat="reason in DECLINE_REASONS"
+                            ng-click="setDeclineReason(reason)"
+                            class="px-3 py-1.5 rounded-lg text-xs font-medium border transition-all focus:outline-none"
+                            ng-class="declineReason === reason ? 'bg-red-600 text-white border-red-600' : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-red-300 hover:text-red-600'">
+                        {{ reason }}
+                    </button>
+                </div>
+
+                <!-- Custom Reason Textarea -->
+                <div ng-if="declineReason === 'Other'" class="animate-fade-in">
+                    <textarea ng-model="$parent.declineCustom"
+                              placeholder="Describe the reason for declining..."
+                              rows="3"
+                              class="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 resize-none">
+                </textarea>
+                </div>
+
+                <!-- Buttons -->
+                <div class="flex gap-3 pt-1">
+                    <button ng-click="closeDecline()" class="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 transition-all focus:outline-none">
+                        Cancel
+                    </button>
+                    <button ng-click="submitDecline()"
+                            ng-disabled="declineLoading || !declineReason || (declineReason === 'Other' && !declineCustom)"
+                            class="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-medium transition-all focus:outline-none">
+                        <span ng-if="declineLoading" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                        <i ng-if="!declineLoading" data-lucide="x" class="w-4 h-4"></i>
+                        {{ declineLoading ? 'Declining...' : 'Decline Booking' }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div ng-show="confirmTarget" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-[60]">
+        <div class="bg-white rounded-2xl w-full max-w-sm p-6 shadow-xl">
+            <button type="button" ng-click="closeConfirm()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-700 focus:outline-none">
+                X
+            </button>
+            <div class="space-y-5">
+                <!-- Icon -->
+                <div class="flex justify-center">
+                    <div class="w-16 h-16 bg-green-100 rounded-2xl flex items-center justify-center">
+                        <i data-lucide="check-circle" class="w-8 h-8 text-green-600"></i>
+                    </div>
+                </div>
+
+                <div class="text-center">
+                    <h3 class="text-slate-900 font-semibold mb-1">Confirm this viewing?</h3>
+                    <p class="text-slate-500 text-sm">This will notify the guest that their booking is approved.</p>
+                </div>
+
+                <!-- Summary -->
+                <div class="bg-green-50 border border-green-100 rounded-xl p-4 space-y-2">
+                    <div class="flex items-center gap-2 text-sm text-green-800">
+                        <i data-lucide="user" class="w-4 h-4 text-green-600 flex-shrink-0"></i>
+                        <span class="font-medium">{{ confirmTarget.name }}</span>
+                    </div>
+                    <div class="flex items-center gap-2 text-sm text-green-700">
+                        <i data-lucide="calendar" class="w-4 h-4 text-green-600 flex-shrink-0"></i>
+                        <span>{{ confirmTarget.datetime | date:'MMM dd, yyyy \'at\' h:mm a' }}</span>
+                    </div>
+                    <div class="flex items-center gap-2 text-sm text-green-700">
+                        <i data-lucide="map-pin" class="w-4 h-4 text-green-600 flex-shrink-0"></i>
+                        <span>{{ confirmTarget.unitName }}</span>
+                    </div>
+                </div>
+
+                <!-- Buttons -->
+                <div class="flex gap-3">
+                    <button ng-click="closeConfirm()" class="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 transition-all focus:outline-none">
+                        Cancel
+                    </button>
+                    <button ng-click="submitConfirm()"
+                            ng-disabled="confirmLoading"
+                            class="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white text-sm font-medium transition-all focus:outline-none">
+                        <span ng-if="confirmLoading" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                        <i ng-if="!confirmLoading" data-lucide="check" class="w-4 h-4"></i>
+                        {{ confirmLoading ? 'Confirming...' : 'Yes, Confirm' }}
+                    </button>
                 </div>
             </div>
         </div>
