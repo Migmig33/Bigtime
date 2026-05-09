@@ -11,7 +11,6 @@
         return response;
     }
     this.verifyCodeService = function (code) {
-        alert(code);
         var response = $http({
             url: "/Auth/VerifyCode",
             method: "post",
@@ -34,19 +33,19 @@
         return response;
     }
     //Save service
-    this.saveUnitService = function(data, images, id){ 
-        var response = $http({
+    this.saveUnitService = function (data, images, amenityIds, id) {
+        return $http({
             url: "/System/SaveUnit",
             method: "post",
             data: {
                 data: data,
                 imageUrls: images,
+                amenityIds: amenityIds, // ✅
                 id: id
             },
-            headers: {"Content-Type": "application/json"}
-        })
-        return response;
-    }
+            headers: { "Content-Type": "application/json" }
+        });
+    };
     this.saveTenantService = function (tenantData, coOccupants, idFiles, id) {
         var response = $http({
             url: "/System/SaveTenant", 

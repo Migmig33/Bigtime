@@ -1,6 +1,7 @@
 ﻿using Microsoft.Ajax.Utilities;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Web;
 using System.Web.Helpers;
@@ -50,22 +51,68 @@ namespace WebApplication1.Controllers
         {
             return View("Admin/Payments");
         }
-        public ActionResult AdminLogin()
+        public ActionResult Auth()
+        {
+            return View();
+        }
+        public ActionResult TenantPortal()
         {
             return View();
         }
         // POST API
-        public JsonResult SaveUnit(unit data, List<string> imageUrls, int? id)
+        [HttpPost]
+        public JsonResult UploadVideo(HttpPostedFileBase video)
+        {
+            try
+            {
+                if (video == null || video.ContentLength == 0)
+                    return Json(new { success = false, message = "No video file received" }, JsonRequestBehavior.AllowGet);
+
+                // Validate file type
+                var allowedTypes = new[] { "video/mp4", "video/webm", "video/ogg" };
+                if (!allowedTypes.Contains(video.ContentType))
+                    return Json(new { success = false, message = "Invalid video file type" }, JsonRequestBehavior.AllowGet);
+
+                // Save to /Uploads/Videos/
+                var fileName = Guid.NewGuid().ToString() + Path.GetExtension(video.FileName);
+                var folderPath = Server.MapPath("~/Uploads/Videos/");
+
+                if (!Directory.Exists(folderPath))
+                    Directory.CreateDirectory(folderPath);
+
+                var filePath = Path.Combine(folderPath, fileName);
+                video.SaveAs(filePath);
+
+                // ✅ Return the accessible URL
+                var videoUrl = "/Uploads/Videos/" + fileName;
+                return Json(new { success = true, videoUrl = videoUrl }, JsonRequestBehavior.AllowGet);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ErrorHandling(ex) }, JsonRequestBehavior.AllowGet);
+            }
+        }
+        public JsonResult SaveUnit(unit data, List<string> imageUrls, string amenityIds, int? id)
         {
             System.Diagnostics.Debug.WriteLine("Data is: " + data.unitName);
             try
             {
-                using(var connect = new DB_Context())
+                using (var connect = new DB_Context())
                 {
-                    var existingUnit = connect.unit.Where(x => x.Uid == 0).FirstOrDefault();
-                    if(existingUnit == null)
+                    // ✅ Parse the string ("1,3,5") into a List of integers
+                    List<int> parsedAmenityIds = new List<int>();
+                    if (!string.IsNullOrEmpty(amenityIds))
                     {
-                        //Insert if null
+                        parsedAmenityIds = amenityIds.Split(',')
+                                                     .Select(int.Parse)
+                                                     .ToList();
+                    }
+
+                    var existingUnit = connect.unit.Where(x => x.Uid == id).FirstOrDefault();
+
+                    if (existingUnit == null)
+                    {
+                        // Insert unit
                         var unitData = new unit
                         {
                             unitName = data.unitName,
@@ -83,23 +130,37 @@ namespace WebApplication1.Controllers
                         connect.unit.Add(unitData);
                         connect.SaveChanges();
 
-                        if(imageUrls != null && imageUrls.Any())
+                        // Insert images
+                        if (imageUrls != null && imageUrls.Any())
                         {
-                            foreach(var url in imageUrls)
+                            foreach (var url in imageUrls)
                             {
-                                var unitImage = new unit_image
+                                connect.unit_image.Add(new unit_image
                                 {
                                     Uid = unitData.Uid,
                                     imageUrl = url
-                                };
-                                connect.unit_image.Add(unitImage);
+                                });
                             }
                             connect.SaveChanges();
                         }
-                        
+
+                        // ✅ Use the parsed list to insert new amenities
+                        if (parsedAmenityIds.Any())
+                        {
+                            foreach (var aId in parsedAmenityIds)
+                            {
+                                connect.unit_amenity.Add(new unit_amenity
+                                {
+                                    Uid = unitData.Uid,
+                                    amenityId = aId
+                                });
+                            }
+                            connect.SaveChanges();
+                        }
                     }
                     else
                     {
+                        // Update unit
                         existingUnit.unitName = data.unitName;
                         existingUnit.price = data.price;
                         existingUnit.beds = data.beds;
@@ -112,25 +173,43 @@ namespace WebApplication1.Controllers
                         existingUnit.address = data.address;
                         existingUnit.maxOccupants = data.maxOccupants;
                         connect.SaveChanges();
-                        
 
+                        // Delete old amenities then re-insert
+                        var oldAmenities = connect.unit_amenity
+                            .Where(x => x.Uid == existingUnit.Uid).ToList();
+                        connect.unit_amenity.RemoveRange(oldAmenities);
+                        connect.SaveChanges();
+
+                        // ✅ Use the parsed list to update amenities
+                        if (parsedAmenityIds.Any())
+                        {
+                            foreach (var aId in parsedAmenityIds)
+                            {
+                                connect.unit_amenity.Add(new unit_amenity
+                                {
+                                    Uid = existingUnit.Uid,
+                                    amenityId = aId
+                                });
+                            }
+                            connect.SaveChanges();
+                        }
                     }
                 }
-                return Json(new { success = true, message = "Unit Saved Successfully" },JsonRequestBehavior.AllowGet);
-            }catch(Exception ex)
+                return Json(new { success = true, message = "Unit Saved Successfully" }, JsonRequestBehavior.AllowGet);
+            }
+            catch (Exception ex)
             {
-                return Json(new {success = false, message = ErrorHandling(ex)}, JsonRequestBehavior.AllowGet);
+                return Json(new { success = false, message = ErrorHandling(ex) }, JsonRequestBehavior.AllowGet);
             }
         }
         [HttpPost]
-        public JsonResult SaveTenant(tenant tenantData, List<co_occupant> coOccupants, List<IdFileDto> idFiles, int? id)
+        public JsonResult SaveTenant(tenant tenantData, List<co_occupant> coOccupants, List<IdFileDto> idFiles, List<int> deletedDocumentIds, int? id)
         {
             System.Diagnostics.Debug.WriteLine("Saving Tenant: " + tenantData.name);
             try
             {
                 using (var connect = new DB_Context())
                 {
-                    // Use the passed 'id' to check if we are updating or inserting
                     var existingTenant = connect.tenant.Where(x => x.Tid == id).FirstOrDefault();
                     if (existingTenant == null)
                     {
@@ -159,7 +238,7 @@ namespace WebApplication1.Controllers
                         };
 
                         connect.tenant.Add(newDbTenant);
-                        connect.SaveChanges(); // Generates the new Tid inside newDbTenant
+                        connect.SaveChanges();
 
                         // --- 2. UPDATE UNIT STATUS & CREATE INITIAL PAYMENT ---
                         if (newDbTenant.unitId > 0)
@@ -167,19 +246,16 @@ namespace WebApplication1.Controllers
                             var assignedUnit = connect.unit.Where(u => u.Uid == newDbTenant.unitId).FirstOrDefault();
                             if (assignedUnit != null)
                             {
-                                // Update unit status
                                 assignedUnit.status = "active";
 
-                                // Create the automatic first payment
                                 var initialPayment = new payment
                                 {
                                     Tid = newDbTenant.Tid,
                                     Uid = assignedUnit.Uid,
-                                    // Replace '.price' below if your unit table uses a different column name (e.g., .rentAmount)
                                     amount = assignedUnit.price,
                                     dueDate = DateTime.Now,
-                                    paidDate = DateTime.Now, // Setting this automatically makes the computed status "Paid"
-                                    billingPeriod = DateTime.Now.ToString("MMMM yyyy") // Automatically sets to current month (e.g., "May 2026")
+                                    paidDate = DateTime.Now,
+                                    billingPeriod = DateTime.Now.ToString("MMMM yyyy")
                                 };
 
                                 connect.payment.Add(initialPayment);
@@ -275,6 +351,38 @@ namespace WebApplication1.Controllers
                         }
 
                         connect.SaveChanges();
+
+                        // --- 8. PROCESS DOCUMENT DELETIONS ---
+                        if (deletedDocumentIds != null && deletedDocumentIds.Any())
+                        {
+                            var docsToDelete = connect.tenant_document
+                                .Where(d => deletedDocumentIds.Contains(d.id))
+                                .ToList();
+
+                            connect.tenant_document.RemoveRange(docsToDelete);
+                            connect.SaveChanges();
+                        }
+
+                        // --- 9. SAVE NEW ID DOCUMENTS (only new ones without an id) ---
+                        if (idFiles != null && idFiles.Any())
+                        {
+                            foreach (var file in idFiles)
+                            {
+                                // Only save files that are new (no existing DB id)
+                                if (file.id == 0)
+                                {
+                                    var doc = new tenant_document
+                                    {
+                                        Tid = existingTenant.Tid,
+                                        fileName = file.name,
+                                        fileUrl = file.url,
+                                        fileType = "ID Document"
+                                    };
+                                    connect.tenant_document.Add(doc);
+                                }
+                            }
+                            connect.SaveChanges();
+                        }
                     }
                 }
                 return Json(new { success = true, message = "Tenant Saved Successfully" }, JsonRequestBehavior.AllowGet);
@@ -548,29 +656,38 @@ namespace WebApplication1.Controllers
             {
                 using (var connect = new DB_Context())
                 {
+                    var currentDate = DateTime.Now.Date;
+
+                    // 1. Existing Top-Level Metrics
                     var requests = connect.maintenance_request
                          .Where(m => m.status == "Pending")
                          .Select(m => m.status).ToList();
+
                     var units = connect.unit
                         .Where(m => m.status == "active")
                         .Select(m => m.status).ToList();
+
                     var bookings = connect.booking
                         .Where(m => m.status == "Pending")
                         .Select(m => m.status).ToList();
+
                     var payments = connect.payment
                         .Where(m => m.paidDate != null)
                         .Sum(m => (decimal?)m.amount) ?? 0;
+
+                    // 2. Recent Bookings List
                     var raw = (from b in connect.booking
-                                          join u in connect.unit on b.Uid equals u.Uid
-                                          orderby b.bookingDatetime descending
-                                          select new
-                                          {
-                                              id = b.id,
-                                              name = b.guestName,
-                                              unitName = u.unitName,
-                                              bookingDate = b.bookingDatetime,
-                                              status = b.status
-                                          }).Take(5).ToList();
+                               join u in connect.unit on b.Uid equals u.Uid
+                               orderby b.bookingDatetime descending
+                               select new
+                               {
+                                   id = b.id,
+                                   name = b.guestName,
+                                   unitName = u.unitName,
+                                   bookingDate = b.bookingDatetime,
+                                   status = b.status
+                               }).Take(5).ToList();
+
                     var recentBookings = raw.Select(b => new
                     {
                         id = b.id,
@@ -579,8 +696,10 @@ namespace WebApplication1.Controllers
                         bookingDate = b.bookingDate.ToString("yyyy-MM-dd HH:mm:ss"),
                         status = b.status
                     }).ToList();
+
+                    // 3. Monthly Revenue Logic
                     var monthlyRevenue = connect.payment
-                         .Where(x => x.paidDate != null)  // replaces status == "Paid"
+                         .Where(x => x.paidDate != null)
                          .Select(x => new
                          {
                              Year = x.paidDate.Value.Year,
@@ -597,65 +716,113 @@ namespace WebApplication1.Controllers
                          .OrderBy(x => x.Year)
                          .ThenBy(x => x.Month)
                          .ToList();
+
+                    // I-load ang mga tables para sa occupancy computation
                     var allUnits = connect.unit.ToList();
                     var allTenants = connect.tenant.ToList();
-                    var allCoOccupants = connect.co_occupant.ToList();
 
+                    // --------------------------------------------------------
+                    // BAGONG LOGIC: CURRENT VACANT UNITS (Pang-Dashboard Card)
+                    // --------------------------------------------------------
+                    int totalActiveUnitsCount = allUnits.Count(u => u.status == "active");
+
+                    var occupiedUnitIdsToday = allTenants
+                    .Where(t =>
+                        t.leaseStart.Date <= currentDate &&
+                        t.leaseEnd.Date >= currentDate &&
+                        t.isTerminated == 0 &&            // 2. Sinigurado na hindi terminated ang tenant
+                        t.status.ToLower() == "active"    // 3. (Optional) Sinigurado na active ang status
+                    )
+                    .Select(t => t.unitId)
+                    .Distinct()
+                    .ToList();
+
+                    int currentVacantUnits = Math.Max(0, totalActiveUnitsCount - occupiedUnitIdsToday.Count);
+
+
+                    // --------------------------------------------------------
+                    // BAGONG LOGIC: MONTHLY OCCUPIED VS VACANT UNITS (Pang-Chart)
+                    // --------------------------------------------------------
                     var monthlyOccupant = allTenants
-                        .Where(t => t.leaseStart != null && t.leaseEnd != null)
                         .Select(t => new
                         {
-                            Year = ((DateTime)t.leaseStart).Year,
-                            Month = ((DateTime)t.leaseStart).Month
+                            Year = t.leaseStart.Year,
+                            Month = t.leaseStart.Month
                         })
                         .Distinct()
                         .OrderBy(x => x.Year)
                         .ThenBy(x => x.Month)
                         .Select(period =>
                         {
+                            // Kunin lahat ng tenants na active sa buwang ito
                             var tenantThisMonth = allTenants
                                 .Where(t =>
-                                    t.leaseStart != null &&
-                                    t.leaseEnd != null &&
-                                    (((DateTime)t.leaseStart).Year < period.Year ||
-                                        (((DateTime)t.leaseStart).Year == period.Year &&
-                                         ((DateTime)t.leaseStart).Month <= period.Month)) &&
-                                    (((DateTime)t.leaseEnd).Year > period.Year ||
-                                        (((DateTime)t.leaseEnd).Year == period.Year &&
-                                         ((DateTime)t.leaseEnd).Month >= period.Month))
+                                    (t.leaseStart.Year < period.Year ||
+                                        (t.leaseStart.Year == period.Year && t.leaseStart.Month <= period.Month)) &&
+                                    (t.leaseEnd.Year > period.Year ||
+                                        (t.leaseEnd.Year == period.Year && t.leaseEnd.Month >= period.Month))
                                 ).ToList();
 
-                            var tenantIdsThisMonth = tenantThisMonth
-                                .Select(t => t.Tid)
-                                .ToList();
+                            // Bilangin kung ilang DISTINCT units ang occupied this month
+                            int occupiedUnitsCount = tenantThisMonth
+                                .Select(t => t.unitId)
+                                .Distinct()
+                                .Count();
 
-                            int tenantCount = tenantThisMonth.Count;
-                            int coOccupantCount = allCoOccupants
-                                .Count(c => tenantIdsThisMonth.Contains(c.Tid));
-
-                            int occupied = tenantCount + coOccupantCount;
-                            int totalCapacity = allUnits
-                                .Where(u => u.status == "active")
-                                .Sum(u => u.maxOccupants);
-
-                            int vacant = Math.Max(0, totalCapacity - occupied);
+                            // I-subtract sa total active units para makuha ang vacant units
+                            int vacantUnitsCount = Math.Max(0, totalActiveUnitsCount - occupiedUnitsCount);
 
                             return new
                             {
                                 Year = period.Year,
                                 Month = period.Month,
-                                Occupied = occupied,
-                                Vacant = vacant
+                                OccupiedUnits = occupiedUnitsCount,
+                                VacantUnits = vacantUnitsCount
                             };
                         })
                         .ToList();
 
-                    return Json(new {success = true, activeUnitNum = units, pendingRequestNum = requests, pendingBookNum = bookings, totalPayment = payments, recentBookings = recentBookings, monthlyRevenue = monthlyRevenue, monthlyOccupant = monthlyOccupant,  message = "Get Data Success"}, JsonRequestBehavior.AllowGet);
+                    // I-return ang lahat sa frontend
+                    return Json(new
+                    {
+                        success = true,
+                        activeUnitNum = units,
+                        pendingRequestNum = requests,
+                        pendingBookNum = bookings,
+                        totalPayment = payments,
+                        recentBookings = recentBookings,
+                        monthlyRevenue = monthlyRevenue,
+                        monthlyOccupant = monthlyOccupant,
+                        currentVacantUnits = currentVacantUnits, // Idinagdag dito
+                        message = "Get Data Success"
+                    }, JsonRequestBehavior.AllowGet);
                 }
             }
             catch (Exception ex)
             {
                 return Json(new { success = false, message = ErrorHandling(ex) }, JsonRequestBehavior.AllowGet);
+            }
+        }
+        [HttpGet]
+        public JsonResult GetAllAmenities()
+        {
+            try
+            {
+                using (var connect = new DB_Context())
+                {
+                    var amenities = connect.amenity
+                        .Select(a => new {
+                            id = a.id,
+                            name = a.name
+                        })
+                        .ToList();
+
+                    return Json(new { success = true, data = amenities }, JsonRequestBehavior.AllowGet);
+                }
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message }, JsonRequestBehavior.AllowGet);
             }
         }
         public JsonResult GetAllUnit()
@@ -666,18 +833,20 @@ namespace WebApplication1.Controllers
                 {
                     var today = DateTime.Today;
                     var expiringThresHold = today.AddDays(45);
-
                     var units = connect.unit.ToList();
                     var tenants = connect.tenant.ToList();
                     var unitImages = connect.unit_image.ToList();
 
+                    // ✅ Fetch amenity tables
+                    var amenities = connect.amenity.ToList();
+                    var unitAmenities = connect.unit_amenity.ToList();
+
                     var result = units.Select(u =>
                     {
                         var tenant = tenants.FirstOrDefault(t =>
-                        t.unitId == u.Uid &&
-                        t.status != "inactive"
+                            t.unitId == u.Uid &&
+                            t.status != "inactive"
                         );
-
 
                         string occupancy;
                         if (tenant == null)
@@ -692,10 +861,19 @@ namespace WebApplication1.Controllers
                         {
                             occupancy = "Occupied";
                         }
-                        var image = unitImages
-                           .Where(i => i.Uid == u.Uid)
-                           .OrderBy(i => i.displayOrder)
-                           .ToList();
+
+                        // ✅ Get amenities for this unit
+                        var unitAmenityList = unitAmenities
+                            .Where(ua => ua.Uid == u.Uid)
+                            .Join(amenities,
+                                ua => ua.amenityId,
+                                a => a.id,
+                                (ua, a) => new
+                                {
+                                    a.id,
+                                    a.name
+                                })
+                            .ToList();
 
                         return new
                         {
@@ -718,12 +896,12 @@ namespace WebApplication1.Controllers
                                 .Select(i => new {
                                     i.imageUrl
                                 })
-                                .ToList()
+                                .ToList(),
+                            amenities = unitAmenityList // ✅ [ { id: 1, name: "WiFi" }, ... ]
                         };
                     }).ToList();
-                   
-                    return Json(new { success = true, data = result }, JsonRequestBehavior.AllowGet);
 
+                    return Json(new { success = true, data = result }, JsonRequestBehavior.AllowGet);
                 }
             }
             catch (Exception ex)
@@ -747,7 +925,7 @@ namespace WebApplication1.Controllers
 
                     // 1. The RAW query (Runs in SQL Server)
                     var raw = (from t in tenants
-                               // Left join the unit to get the unit name safely
+                                   // Left join the unit to get the unit name safely
                                join u in units on t.unitId equals u.Uid into unitGroup
                                from u in unitGroup.DefaultIfEmpty()
                                select new
@@ -768,7 +946,6 @@ namespace WebApplication1.Controllers
                                    t.passwordHash,
                                    unitName = u != null ? u.unitName : null,
                                    maxOccupants = u != null ? u.maxOccupants : 0,
-                                   // Map your co-occupant model exactly
                                    coOccupantsList = coOccupants.Where(c => c.Tid == t.Tid).Select(c => new {
                                        c.id,
                                        c.Tid,
@@ -776,10 +953,19 @@ namespace WebApplication1.Controllers
                                        c.phone,
                                        c.address
                                    }).ToList(),
-
-                               
                                    additionalOccupantsCount = coOccupants.Count(c => c.Tid == t.Tid),
-                                   idFilesCount = tenantDocuments.Count(d => d.Tid == t.Tid)
+
+
+                                   idFiles = tenantDocuments
+                                    .Where(d => d.Tid == t.Tid)
+                                    .Select(d => new {
+                                        id = d.id,
+                                        url = d.fileUrl,
+                                        fileName = d.fileName,
+                                        fileType = d.fileType
+                                    })
+                                    .ToList(),
+
                                }).ToList();
 
                     var data = raw.Select(t =>
@@ -824,7 +1010,6 @@ namespace WebApplication1.Controllers
                             coOccupants = t.coOccupantsList,
                             maxOccupants = t.maxOccupants,
 
-                            // FORMAT DATES HERE: This fixes the Angular [ngModel:datefmt] error!
                             leaseStart = t.leaseStart.ToString("yyyy-MM-dd"),
                             leaseEnd = t.leaseEnd.ToString("yyyy-MM-dd"),
 
@@ -838,8 +1023,9 @@ namespace WebApplication1.Controllers
                             daysLeft = daysLeft,
                             liveStatus = liveStatus,
                             contractType = contractType,
-                            latestPaymentStatus = "None", // extend when payment table is available
-                            idFilesCount = t.idFilesCount
+                            latestPaymentStatus = "None",
+
+                            idFiles = t.idFiles  
                         };
                     }).ToList();
 
@@ -864,11 +1050,11 @@ namespace WebApplication1.Controllers
                                         select new
                                         {
                                             id = b.id,
-                                            name = b.guestName,       // Maps to {{ b.name }} in HTML
-                                            email = b.guestEmail,     // Maps to {{ b.email }} in HTML
-                                            phone = b.guestPhone,     // Maps to {{ b.phone }} in HTML
-                                            datetime = b.bookingDatetime, // Maps to {{ b.datetime }}
-                                            status = b.status,        // Maps to {{ b.status }}
+                                            name = b.guestName,       
+                                            email = b.guestEmail,     
+                                            phone = b.guestPhone,     
+                                            datetime = b.bookingDatetime, 
+                                            status = b.status,  
                                             unitName = u != null ? u.unitName : "Unknown Unit"
                                         })
                                         .OrderByDescending(b => b.datetime)

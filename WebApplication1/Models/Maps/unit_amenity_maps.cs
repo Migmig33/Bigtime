@@ -9,7 +9,7 @@ namespace WebApplication1.Models.Maps
     public class unit_amenity_maps : EntityTypeConfiguration<unit_amenity> { 
 
         public unit_amenity_maps() {
-            HasKey(x => x.amenityId);
+            HasKey(x => x.id);
             ToTable("unit_amenity");
         }
     }

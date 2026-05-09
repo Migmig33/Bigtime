@@ -3,7 +3,7 @@
 }
 
 
-<div class="p-6 space-y-6 overflow-y-auto flex-1" ng-init="getDataNum(); currentPage = 'Dashboard'">
+<div class="p-6 space-y-6 overflow-y-auto flex-1" ng-init="getDataNum(); getAllPayments(); currentPage = 'Dashboard'">
 
     <div class="flex items-center justify-between">
         <div>
@@ -23,7 +23,7 @@
             </div>
             <p class="text-slate-500 text-xs mb-1">Active Units</p>
             <p class="text-slate-900 text-2xl font-bold">{{activeUnitNum.length || 0}}</p>
-            <p class="text-slate-400 text-xs mt-1">3 vacant</p>
+            <p class="text-slate-400 text-xs mt-1">{{totalVacant || 0}} vacant</p>
         </button>
 
         <button ng-click="goTo('Bookings')" class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:shadow-md transition-all text-left">
@@ -44,9 +44,9 @@
                 </div>
                 
             </div>
-            <p class="text-slate-500 text-xs mb-1">Revenue (Apr)</p>
+            <p class="text-slate-500 text-xs mb-1">Revenue</p>
             <p class="text-slate-900 text-2xl font-bold">₱{{totalPayment || 0}}</p>
-            <p class="text-slate-400 text-xs mt-1">2 overdue</p>
+            <p class="text-slate-400 text-xs mt-1">{{ totalOverdue | number:0 }} overdue</p>
         </button>
 
         <button ng-click="goTo('Maintenance')" class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:shadow-md transition-all text-left">
@@ -78,8 +78,8 @@
         <div class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm">
             <h3 class="text-slate-900 font-semibold mb-4">Occupancy Trend</h3>
             <canvas id="bar" class="chart chart-bar"
-                    chart-data="bardata" chart-labels="barlabels">
-                chart-series="barseries"
+                    chart-data="bardata" chart-labels="barlabels"
+                chart-series="barseries">
             </canvas>
         </div>
 

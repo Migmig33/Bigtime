@@ -2,11 +2,8 @@
     Layout = "~/Views/Shared/_AdminLayout.cshtml";
 }
 
-@{
-    Layout = "~/Views/Shared/_AdminLayout.cshtml";
-}
 <!-- Toast Notification -->
-<div ng-show="toastShow"
+<div ng-show="toastShow" ng-cloak
      style="animation: slideDown 0.5s ease-in-out"
      class="fixed top-4 right-4 z-[100] flex items-center gap-3 bg-white border border-slate-200 shadow-sm rounded-2xl px-5 py-4 w-[400px] max-w-full transition-all duration-300">
 
@@ -18,6 +15,7 @@
     <!-- Dynamic Message -->
     <span class="text-slate-800 font-medium text-[15px]">{{ toast.message }}</span>
 </div>
+
 <div class="p-6 flex flex-col min-w-0 overflow-hidden" ng-init="currentPage = 'Tenant'; getAllTenants();  getAllUnits();">
 
     <!-- Header -->
@@ -218,7 +216,6 @@
                             </span>
                         </td>
 
-                       
                         <td class="px-5 py-3">
                             <div class="flex items-center gap-2">
                                 <button ng-click="triggerEditTenant(t)" class="p-1.5 rounded-lg hover:bg-green-50 text-slate-400 hover:text-green-600 transition-all">
@@ -239,18 +236,19 @@
                             </div>
                         </td>
                     </tr>
-                 
 
-                <tr ng-if="filteredTenants().length === 0">
-                    <td colspan="11" class="text-center py-12 text-slate-400 text-sm">No tenants found matching your criteria.</td>
-                </tr>
+                    <tr ng-if="filteredTenants().length === 0">
+                        <td colspan="11" class="text-center py-12 text-slate-400 text-sm">No tenants found matching your criteria.</td>
+                    </tr>
                 </tbody>
             </table>
         </div>
     </div>
 </div>
+
 <!--Tenant Editor Modal-->
-<div ng-show="editorModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+<!--Tenant Editor Modal-->
+<div ng-show="editorModal" ng-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
     <div class="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
 
         <!-- Header -->
@@ -267,7 +265,7 @@
             <!-- Tenant ID -->
             <div class="flex items-center gap-3 p-3 bg-green-50 border border-green-100 rounded-xl">
                 <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <i data-lucide="hash" class="w-4 h-4 text-green-600"></i>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 text-green-600"><line x1="4" x2="20" y1="9" y2="9" /><line x1="4" x2="20" y1="15" y2="15" /><line x1="10" x2="8" y1="3" y2="21" /><line x1="16" x2="14" y1="3" y2="21" /></svg>
                 </div>
                 <div class="flex-1">
                     <p class="text-xs text-green-600 font-medium">Tenant ID</p>
@@ -286,7 +284,7 @@
                             class="flex items-start gap-3 p-4 rounded-xl border-2 text-left transition-all">
                         <div ng-class="occupancyTypeId === 1 ? 'bg-green-100' : 'bg-slate-100'"
                              class="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0">
-                            <i data-lucide="user" class="w-4 h-4" ng-class="occupancyTypeId === 1 ? 'text-green-600' : 'text-slate-400'"></i>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4" ng-class="occupancyTypeId === 1 ? 'text-green-600' : 'text-slate-400'"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
                         </div>
                         <div>
                             <p class="text-sm font-semibold" ng-class="occupancyTypeId === 1 ? 'text-green-800' : 'text-slate-700'">Solo</p>
@@ -299,7 +297,7 @@
                             class="flex items-start gap-3 p-4 rounded-xl border-2 text-left transition-all">
                         <div ng-class="occupancyTypeId === 2 ? 'bg-blue-100' : 'bg-slate-100'"
                              class="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0">
-                            <i data-lucide="users" class="w-4 h-4" ng-class="occupancyTypeId === 2 ? 'text-blue-600' : 'text-slate-400'"></i>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4" ng-class="occupancyTypeId === 2 ? 'text-blue-600' : 'text-slate-400'"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
                         </div>
                         <div>
                             <p class="text-sm font-semibold" ng-class="occupancyTypeId === 2 ? 'text-blue-800' : 'text-slate-700'">With Additional Tenants</p>
@@ -314,22 +312,28 @@
                 <div>
                     <label class="block text-sm text-slate-700 font-medium mb-1">Full Name *</label>
                     <input type="text" id="fieldName" ng-model="name" placeholder="Full name"
+                           maxlength="50" oninput="this.value = this.value.replace(/[^a-zA-Z\sñÑ]/g, '')"
                            class="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+                    <p class="text-[10px] text-right mt-1" ng-class="name.length >= 50 ? 'text-red-500 font-bold' : 'text-slate-400'">{{ name.length || 0 }}/50</p>
                 </div>
+
                 <div>
                     <label class="block text-sm text-slate-700 font-medium mb-1">Email *</label>
-                    <input type="text" id="fieldEmail" ng-model="email" placeholder="email@example.com"
+                    <input type="email" id="fieldEmail" ng-model="email" placeholder="email@example.com" maxlength="50"
                            class="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+                    <p class="text-[10px] text-right mt-1" ng-class="email.length >= 50 ? 'text-red-500 font-bold' : 'text-slate-400'">{{ email.length || 0 }}/50</p>
                 </div>
+
                 <div>
                     <label class="block text-sm text-slate-700 font-medium mb-1">Phone</label>
-                    <input type="tel" id="fieldPhone" ng-model="phone" placeholder="09XX-XXX-XXXX"
+                    <input type="tel" id="fieldPhone" ng-model="phone" placeholder="09XXXXXXXXX"
+                           maxlength="11" oninput="this.value = this.value.replace(/[^0-9]/g, '')"
                            class="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+                    <p class="text-[10px] text-right mt-1" ng-class="phone.length >= 11 ? 'text-red-500 font-bold' : 'text-slate-400'">{{ phone.length || 0 }}/11</p>
                 </div>
+
                 <div>
                     <label class="block text-sm text-slate-700 font-medium mb-1">Assigned Unit</label>
-
-                    <!-- Use ng-options for better binding and type handling -->
                     <select id="fieldUnitId"
                             ng-model="unitId"
                             ng-change="onUnitChange()"
@@ -345,9 +349,10 @@
 
                     <!-- Message if no units are available -->
                     <p ng-if="(units | filter:shouldShowUnit).length === 0" class="text-xs text-red-500 mt-1 flex items-center gap-1">
-                        <i data-lucide="alert-circle" class="w-3 h-3"></i> No vacant units available.
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3 h-3"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg> No vacant units available.
                     </p>
                 </div>
+
                 <div>
                     <label class="block text-sm text-slate-700 font-medium mb-1">Lease Start</label>
                     <input type="date" id="fieldLeaseStart" ng-model="leaseStart"
@@ -357,7 +362,6 @@
 
                 <div>
                     <label class="block text-sm text-slate-700 font-medium mb-1">Lease End</label>
-                    <!-- Use ng-min for better compatibility with the Date object -->
                     <input type="date" id="fieldLeaseEnd" ng-model="leaseEnd"
                            min="{{ minLeaseEnd }}"
                            ng-disabled="!leaseStart"
@@ -365,37 +369,45 @@
                            class="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
 
                     <p ng-if="!leaseStart" class="text-xs text-slate-400 mt-1 flex items-center gap-1">
-                        <i data-lucide="clock" class="w-3 h-3"></i> Set a lease start date first
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3 h-3"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg> Set a lease start date first
                     </p>
                     <p ng-if="leaseStart" class="text-xs text-blue-500 mt-1 flex items-center gap-1">
-                        <i data-lucide="info" class="w-3 h-3"></i> Minimum 3-month contract required
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3 h-3"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="16" y2="12" /><line x1="12" x2="12.01" y1="8" y2="8" /></svg> Minimum 3-month contract required
                     </p>
                 </div>
+
                 <div>
                     <label class="block text-sm text-slate-700 font-medium mb-1">Address</label>
-                    <input type="text" id="fieldAddress" ng-model="address" placeholder="City, Province"
+                    <input type="text" id="fieldAddress" ng-model="address" placeholder="City, Province" maxlength="100"
                            class="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+                    <p class="text-[10px] text-right mt-1" ng-class="address.length >= 100 ? 'text-red-500 font-bold' : 'text-slate-400'">{{ address.length || 0 }}/100</p>
                 </div>
+
                 <div>
                     <label class="block text-sm text-slate-700 font-medium mb-1">Occupation</label>
-                    <input type="text" id="fieldOccupation" ng-model="occupation" placeholder="e.g. Engineer"
+                    <input type="text" id="fieldOccupation" ng-model="occupation" placeholder="e.g. Engineer" maxlength="25"
                            class="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+                    <p class="text-[10px] text-right mt-1" ng-class="occupation.length >= 25 ? 'text-red-500 font-bold' : 'text-slate-400'">{{ occupation.length || 0 }}/25</p>
                 </div>
+
                 <div>
                     <label class="block text-sm text-slate-700 font-medium mb-1">Portal Password</label>
-                    <input type="text" id="fieldPasswordHash" ng-model="passwordHash" placeholder="Tenant login password"
+                    <input type="text" id="fieldPasswordHash" ng-model="passwordHash" placeholder="Tenant login password" maxlength="20"
                            class="w-full px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
-                    <p class="text-slate-400 text-xs mt-1">Default: <span class="font-mono">123</span></p>
+                    <div class="flex justify-between items-center mt-1">
+                        <p class="text-slate-400 text-xs">Default: <span class="font-mono">123</span></p>
+                        <p class="text-[10px]" ng-class="passwordHash.length >= 20 ? 'text-red-500 font-bold' : 'text-slate-400'">{{ passwordHash.length || 0 }}/20</p>
+                    </div>
                 </div>
             </div>
 
             <!-- Additional Occupants -->
-            <div ng-show="occupancyTypeId === 2" class="border border-blue-100 bg-blue-50/50 rounded-2xl p-4 space-y-4">
+            <div ng-show="occupancyTypeId === 2" ng-cloak class="border border-blue-100 bg-blue-50/50 rounded-2xl p-4 space-y-4">
 
                 <!-- HEADER -->
                 <div class="flex items-center justify-between">
                     <div class="flex items-center gap-2">
-                        <i data-lucide="users" class="w-4 h-4 text-blue-600"></i>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4 text-blue-600"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
                         <p class="text-sm text-blue-800 font-semibold">Additional Occupants</p>
 
                         <!-- Dynamic Max Counter -->
@@ -405,16 +417,16 @@
                         </span>
                     </div>
 
-                    <!-- Add Button (Disables when limit is reached) -->
+                    <!-- Add Button -->
                     <button type="button"
                             ng-click="addCoOccupant()"
                             ng-disabled="co_occupants.length >= maxCoOccupantsLimit"
                             class="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                        <i data-lucide="user-plus" class="w-3 h-3"></i> Add Occupant
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3 h-3"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><line x1="19" x2="19" y1="8" y2="14" /><line x1="22" x2="16" y1="11" y2="11" /></svg> Add Occupant
                     </button>
                 </div>
 
-                <!-- THE FORMS (Notice the 'track by $index' here!) -->
+                <!-- THE FORMS -->
                 <div ng-repeat="occ in co_occupants track by $index" class="bg-white border border-blue-100 rounded-xl p-4 space-y-3">
                     <div class="flex items-center justify-between mb-1">
                         <span class="text-xs text-blue-600 font-semibold flex items-center gap-1.5">
@@ -423,23 +435,28 @@
                         </span>
                         <button type="button" ng-click="removeCoOccupant($index)"
                                 class="p-1 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500 transition-all">
-                            <i data-lucide="trash" class="w-3.5 h-3.5"></i>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /><line x1="10" x2="10" y1="11" y2="17" /><line x1="14" x2="14" y1="11" y2="17" /></svg>
                         </button>
                     </div>
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         <div>
                             <label class="block text-xs text-slate-600 font-medium mb-1">Full Name *</label>
                             <input type="text" ng-model="occ.name" placeholder="Full name"
+                                   maxlength="50" oninput="this.value = this.value.replace(/[^a-zA-Z\sñÑ]/g, '')"
                                    class="w-full px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                            <p class="text-[10px] text-right mt-1" ng-class="occ.name.length >= 50 ? 'text-red-500 font-bold' : 'text-slate-400'">{{ occ.name.length || 0 }}/50</p>
                         </div>
                         <div>
                             <label class="block text-xs text-slate-600 font-medium mb-1">Phone *</label>
-                            <input type="tel" ng-model="occ.phone" placeholder="09XX-XXX-XXXX"
+                            <input type="tel" ng-model="occ.phone" placeholder="09XXXXXXXXX"
+                                   maxlength="11" oninput="this.value = this.value.replace(/[^0-9]/g, '')"
                                    class="w-full px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                            <p class="text-[10px] text-right mt-1" ng-class="occ.phone.length >= 11 ? 'text-red-500 font-bold' : 'text-slate-400'">{{ occ.phone.length || 0 }}/11</p>
                         </div>
                         <div>
                             <label class="block text-xs text-slate-600 font-medium mb-1">Address</label>
                             <input type="text" ng-model="occ.address" placeholder="City, Province"
+                                   maxlength="50"
                                    class="w-full px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
                         </div>
                     </div>
@@ -447,7 +464,7 @@
 
                 <!-- EMPTY STATE -->
                 <div ng-if="!co_occupants || co_occupants.length === 0" class="text-center py-4 text-blue-400 text-sm">
-                    <i data-lucide="users" class="w-6 h-6 mx-auto mb-1 opacity-50"></i>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6 mx-auto mb-1 opacity-50"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
                     <p>No co-occupants added yet.</p>
                     <p class="text-xs mt-0.5" ng-if="maxCoOccupantsLimit > 0">Click "Add Occupant" to add up to {{ maxCoOccupantsLimit }}.</p>
                 </div>
@@ -470,16 +487,13 @@
                         <!-- The Hover "X" Button -->
                         <button type="button" ng-click="removeIdFile($index)"
                                 class="absolute top-1 right-1 p-1 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-sm">
-                            <!-- Pure SVG matching your reference -->
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                         </button>
                     </div>
 
                     <!-- 2. The Upload ID Button -->
-                    <!-- Added !idFiles fallback just in case the array hasn't initialized yet -->
-                    <label for="idFileInput" ng-show="!idFiles || idFiles.length < 2"
+                    <label for="idFileInput" ng-show="!idFiles || idFiles.length < 2" ng-cloak
                            class="w-28 h-20 rounded-xl border-2 border-dashed border-slate-200 hover:border-green-300 flex flex-col items-center justify-center gap-1 text-slate-400 hover:text-green-500 transition-all cursor-pointer">
-                        <!-- Pure SVG for File/Upload icon -->
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
                         <span class="text-xs">Upload ID</span>
                     </label>
@@ -487,9 +501,10 @@
                 </div>
 
                 <!-- 3. The Hidden File Input -->
-                <input type="file" id="idFileInput" accept="image/*,.pdf" multiple class="hidden"
+                <!-- Removed 'multiple' and '.pdf' from accept -->
+                <input type="file" id="idFileInput" accept="image/*" class="hidden"
                        onchange="angular.element(this).scope().handleIdUpload(this.files)" />
-                <p class="text-slate-400 text-xs mt-1">Accepts images and PDF. Max 2 files.</p>
+                <p class="text-slate-400 text-xs mt-1">Accepts images only. Max 2 files.</p>
             </div>
 
         </div>
@@ -503,7 +518,8 @@
         </div>
     </div>
 </div>
-<div ng-show="deleteTenantConfirm" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+
+<div ng-show="deleteTenantConfirm" ng-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
     <div class="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6">
         <h3 class="text-slate-900 font-semibold text-base mb-2">Remove Tenant</h3>
         <p class="text-slate-600 text-sm mb-5">

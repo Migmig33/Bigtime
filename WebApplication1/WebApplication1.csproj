@@ -219,10 +219,12 @@
     <Compile Include="Controllers\AuthController.cs" />
     <Compile Include="Controllers\HomeController.cs" />
     <Compile Include="Controllers\SystemController.cs" />
+    <Compile Include="Controllers\TenantPortalController.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
     </Compile>
     <Compile Include="Models\Context\DB_Context.cs" />
+    <Compile Include="Models\LoginModelDTO.cs" />
     <Compile Include="Models\Maps\admin_maps.cs" />
     <Compile Include="Models\Maps\amenity_maps.cs" />
     <Compile Include="Models\Maps\booking_maps.cs" />
@@ -1101,7 +1103,9 @@
     <Content Include="Scripts\modernizr-2.8.3.js" />
     <Content Include="Scripts\Scripts\Controller.js" />
     <Content Include="Scripts\Scripts\Module.js" />
+    <Content Include="Scripts\Scripts\ModuleTenant.js" />
     <Content Include="Scripts\Scripts\Service.js" />
+    <Content Include="Scripts\Scripts\TenantController.js" />
     <Content Include="Scripts\sitemap.xml" />
     <Content Include="Scripts\test-bundles\angular-aria.js" />
     <Content Include="Scripts\test-bundles\angular-cookies.js" />
@@ -1137,14 +1141,17 @@
     <Content Include="Views\System\Admin\Bookings.cshtml" />
     <Content Include="Views\System\Admin\Maintenance.cshtml" />
     <Content Include="Views\System\Admin\Payments.cshtml" />
-    <Content Include="Views\System\AdminLogin.cshtml" />
+    <Content Include="Views\System\Auth.cshtml" />
     <Content Include="Views\Shared\_AuthLayout.cshtml" />
+    <Content Include="Views\Shared\_TenantLayout.cshtml" />
+    <Content Include="Views\System\TenantPortal.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />
     <Folder Include="Views\AI\" />
     <Folder Include="Views\Auth\" />
     <Folder Include="Views\Notification\" />
+    <Folder Include="Views\TenantPortal\" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Content\bootstrap.rtl.min.css.map" />
